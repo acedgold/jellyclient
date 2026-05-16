@@ -4,6 +4,20 @@ Client [Jellyfin](https://jellyfin.org) from scratch en Flutter — design dark 
 
 **Plateformes** : Linux · Windows · iOS (en cours)
 
+## Screenshots
+
+| Dashboard | Bibliothèque |
+|---|---|
+| ![Dashboard hero](screenshots/01_accueil_hero.png) | ![Bibliothèque](screenshots/03_bibliotheque_grid.png) |
+
+| Fiche film | Fiche série |
+|---|---|
+| ![Fiche film](screenshots/04_film_detail_haut.png) | ![Fiche série](screenshots/06_serie_header.png) |
+
+| Recherche | Paramètres |
+|---|---|
+| ![Recherche](screenshots/09_recherche_resultats.png) | ![Paramètres](screenshots/10_parametres.png) |
+
 ## Fonctionnalités
 
 - **Dashboard** : Hero banner, Top 10, sections par genre, continuer à regarder
