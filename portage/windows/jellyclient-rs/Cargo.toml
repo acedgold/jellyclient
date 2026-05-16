@@ -1,0 +1,31 @@
+[package]
+name        = "jellyclient"
+version     = "0.1.0"
+edition     = "2021"
+description = "Client Jellyfin — version Rust native Windows"
+
+[[bin]]
+name = "jellyclient"
+path = "src/main.rs"
+
+[dependencies]
+eframe      = { version = "0.28" }
+egui        = "0.28"
+# image feature uniquement — pas "http" (on gère le téléchargement avec reqwest)
+egui_extras = { version = "0.28", features = ["image"] }
+
+# HTTP avec TLS natif Windows (WinTLS) — images + API
+reqwest     = { version = "0.12", features = ["blocking", "json", "native-tls"] }
+# Décodage d'images JPEG/PNG/WebP
+image       = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
+
+serde       = { version = "1", features = ["derive"] }
+serde_json  = "1"
+keyring     = "3"
+
+[profile.release]
+opt-level     = "z"
+lto           = true
+codegen-units = 1
+strip         = true
+panic         = "abort"
