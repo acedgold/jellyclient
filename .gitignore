@@ -55,3 +55,6 @@ windows/flutter/generated_plugins.cmake
 
 # Rust build artifacts
 portage/windows/jellyclient-rs/target/
+
+# Paquets de distribution Linux générés
+portage/linux/dist/

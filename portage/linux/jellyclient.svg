@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Fond arrondi noir -->
+  <rect width="512" height="512" rx="80" fill="#0D0D0D"/>
+
+  <!-- Lettre J en rouge — barre horizontale du haut -->
+  <rect x="128" y="88" width="256" height="56" rx="28" fill="#E50914"/>
+
+  <!-- Lettre J — trait vertical droit -->
+  <rect x="328" y="88" width="56" height="288" fill="#E50914"/>
+
+  <!-- Lettre J — crochet bas (arc épais vers la gauche) -->
+  <path d="M384,340 C384,424 336,460 264,460 C192,460 148,418 140,376"
+        fill="none"
+        stroke="#E50914"
+        stroke-width="56"
+        stroke-linecap="round"/>
+
+  <!-- Point d'accent blanc en bas du crochet -->
+  <circle cx="148" cy="372" r="20" fill="white" opacity="0.85"/>
+</svg>

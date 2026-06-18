@@ -50,6 +50,20 @@ flutter build linux --release
 
 Le binaire se trouve dans `build/linux/x64/release/bundle/jellyclient`.
 
+### Installer sur une autre machine Linux (sans Flutter)
+
+Pour déployer sur un autre PC Linux **sans y installer Flutter**, compilez une
+fois puis distribuez le bundle pré-compilé via le paquet auto-installable :
+
+```bash
+cd portage/linux && ./package.sh --build
+# → dist/jellyclient-linux-x64.tar.gz à copier sur la machine cible :
+#   tar xzf jellyclient-linux-x64.tar.gz && cd jellyclient-linux-x64 && ./install.sh
+```
+
+⚠️ La machine cible doit avoir une glibc **≥** celle de la machine de build.
+Détails et table de compatibilité : [`portage/linux/BUILD.md`](portage/linux/BUILD.md).
+
 ## Installation (Windows)
 
 Voir [`portage/windows/BUILD.md`](portage/windows/BUILD.md) pour la procédure complète avec VLC portable.
