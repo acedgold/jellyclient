@@ -3,8 +3,8 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../core/api/jellyfin_client.dart';
-import '../../core/api/models/jellyfin_models.dart';
 import '../../core/providers/app_providers.dart';
+import '../../core/storage/server_storage.dart';
 
 class AddServerScreen extends HookConsumerWidget {
   const AddServerScreen({super.key});
@@ -12,41 +12,27 @@ class AddServerScreen extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final urlCtrl = useTextEditingController(text: 'https://');
-    final userCtrl = useTextEditingController();
-    final passCtrl = useTextEditingController();
     final loading = useState(false);
     final error = useState<String?>(null);
 
     Future<void> connect() async {
       error.value = null;
-      final url = urlCtrl.text.trim().replaceAll(RegExp(r'/$'), '');
-      if (url.isEmpty || userCtrl.text.isEmpty || passCtrl.text.isEmpty) {
-        error.value = 'Tous les champs sont requis';
+      final url = normalizeServerUrl(urlCtrl.text);
+      if (url.isEmpty || url == 'https:' || url == 'http:') {
+        error.value = 'Saisissez l\'adresse du serveur';
         return;
       }
       loading.value = true;
       try {
-        final tmpClient = JellyfinClient(baseUrl: url);
-        final auth = await tmpClient.authenticate(
-          username: userCtrl.text.trim(),
-          password: passCtrl.text,
-        );
-        final server = ServerProfile(
-          id: auth.serverId,
-          name: auth.serverName,
-          url: url,
-          userId: auth.userId,
-          accessToken: auth.accessToken,
-          username: auth.username,
-        );
+        // Vérifie que le serveur répond (endpoint public, sans authentification).
+        await JellyfinClient(baseUrl: url).getPublicUsers();
         final storage = ref.read(serverStorageProvider);
-        await storage.saveServer(server);
-        await storage.setActiveServer(server.id);
-        ref.read(serversProvider.notifier).state = storage.getServers();
-        ref.read(activeServerProvider.notifier).state = server;
-        if (context.mounted) context.go('/home');
-      } on Exception catch (e) {
-        error.value = 'Connexion échouée : ${e.toString()}';
+        final known = KnownServer.fromUrl(url);
+        await storage.saveKnownServer(known);
+        await storage.setLastServerId(known.id);
+        if (context.mounted) context.go('/login');
+      } on Exception catch (_) {
+        error.value = 'Serveur injoignable — vérifiez l\'adresse';
       } finally {
         loading.value = false;
       }
@@ -68,6 +54,12 @@ class AddServerScreen extends HookConsumerWidget {
                   'Ajouter un serveur',
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Saisissez l\'adresse de votre serveur Jellyfin. '
+                  'Vous choisirez ensuite votre utilisateur.',
+                  style: TextStyle(color: Color(0xFF888888), fontSize: 13),
+                ),
                 const SizedBox(height: 24),
                 TextField(
                   controller: urlCtrl,
@@ -78,24 +70,6 @@ class AddServerScreen extends HookConsumerWidget {
                   ),
                   keyboardType: TextInputType.url,
                   autocorrect: false,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: userCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Nom d\'utilisateur',
-                    prefixIcon: Icon(Icons.person_outline),
-                  ),
-                  autocorrect: false,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: passCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Mot de passe',
-                    prefixIcon: Icon(Icons.lock_outline),
-                  ),
-                  obscureText: true,
                   onSubmitted: (_) => connect(),
                 ),
                 if (error.value != null) ...[
@@ -117,7 +91,7 @@ class AddServerScreen extends HookConsumerWidget {
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         )
-                      : const Text('Se connecter'),
+                      : const Text('Continuer'),
                 ),
               ],
             ),

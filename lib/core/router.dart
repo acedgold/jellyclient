@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'providers/app_providers.dart';
 import '../features/auth/add_server_screen.dart';
 import '../features/auth/servers_screen.dart';
-import '../features/auth/profiles_screen.dart';
+import '../features/auth/login_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/library/library_screen.dart';
 import '../features/detail/detail_screen.dart';
@@ -16,14 +16,24 @@ import '../features/watchlist/watchlist_screen.dart';
 import '../features/genre/genre_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final activeServer = ref.watch(activeServerProvider);
+  // NE PAS watch activeServerProvider : sinon le router est recréé à la
+  // connexion et repart sur sa route de départ (/login). On lit l'état en
+  // direct dans redirect via ref.read.
+  final storage = ref.read(serverStorageProvider);
+
+  // Route de connexion par défaut : page de login si un serveur est connu,
+  // sinon ajout de serveur.
+  String authEntry() =>
+      storage.getKnownServers().isEmpty ? '/add-server' : '/login';
+
+  const authRoutes = {'/login', '/add-server', '/servers'};
 
   return GoRouter(
-    initialLocation: activeServer != null ? '/home' : '/add-server',
+    initialLocation: authEntry(),
     redirect: (context, state) {
-      // Rediriger vers /add-server uniquement au démarrage sans serveur configuré
-      final onAuth = state.matchedLocation == '/add-server';
-      if (activeServer == null && !onAuth) return '/add-server';
+      if (authRoutes.contains(state.matchedLocation)) return null;
+      // Routes applicatives : exigent un compte connecté (lu en direct).
+      if (ref.read(activeServerProvider) == null) return authEntry();
       return null;
     },
     routes: [
@@ -32,12 +42,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const AddServerScreen(),
       ),
       GoRoute(
-        path: '/servers',
-        builder: (_, __) => const ServersScreen(),
+        path: '/login',
+        builder: (_, __) => const LoginScreen(),
       ),
       GoRoute(
-        path: '/profiles',
-        builder: (_, __) => const ProfilesScreen(),
+        path: '/servers',
+        builder: (_, __) => const ServersScreen(),
       ),
       GoRoute(
         path: '/home',

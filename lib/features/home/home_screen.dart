@@ -215,8 +215,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           onPressed: () => context.go('/servers')),
                       IconButton(
                           icon: const Icon(Icons.switch_account_outlined),
-                          tooltip: 'Profils',
-                          onPressed: () => context.go('/profiles')),
+                          tooltip: 'Changer d\'utilisateur',
+                          onPressed: () async {
+                            final active = ref.read(activeServerProvider);
+                            if (active != null) {
+                              await ref
+                                  .read(serverStorageProvider)
+                                  .clearLogin(active.id);
+                            }
+                            if (context.mounted) context.go('/login');
+                          }),
                       IconButton(
                           icon: const Icon(Icons.settings_outlined),
                           onPressed: () => context.go('/settings')),

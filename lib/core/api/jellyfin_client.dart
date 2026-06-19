@@ -322,6 +322,15 @@ class JellyfinClient {
     await _dio.delete('$_baseUrl/Users/$userId/PlayedItems/$itemId');
   }
 
+  /// Utilisateurs publics du serveur (visibles sur l'écran de connexion).
+  /// Aucun token requis — appelé avant authentification.
+  Future<List<Map<String, dynamic>>> getPublicUsers() async {
+    const timeout = Duration(seconds: 8);
+    final resp = await _dio.get('$_baseUrl/Users/Public',
+        options: Options(sendTimeout: timeout, receiveTimeout: timeout));
+    return (resp.data as List<dynamic>).cast<Map<String, dynamic>>();
+  }
+
   Future<List<Map<String, dynamic>>> getServerUsers() async {
     const timeout = Duration(seconds: 5);
     try {
