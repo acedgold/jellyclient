@@ -178,21 +178,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Version de l'app (toujours visible — savoir quelle version tourne)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: Text(
-                          ref.watch(appVersionProvider).maybeWhen(
-                                data: (v) => 'v$v',
-                                orElse: () => '',
-                              ),
-                          style: const TextStyle(
-                            color: Color(0xFF888888),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
                       // Badge live : personnage + chiffre vert
                       _LiveBadgeButton(
                         count: sessionCount,
