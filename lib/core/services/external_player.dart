@@ -63,7 +63,22 @@ Future<String> getExternalPlayer() async {
     }
   }
 
-  // Défaut Linux/macOS
+  // Auto-détection macOS
+  if (Platform.isMacOS) {
+    // VLC installé dans /Applications (le binaire est dans le bundle .app)
+    for (final path in [
+      '/Applications/VLC.app/Contents/MacOS/VLC',
+      '${Platform.environment['HOME'] ?? ''}/Applications/VLC.app/Contents/MacOS/VLC',
+    ]) {
+      if (File(path).existsSync()) return path;
+    }
+    // Repli : binaire vlc dans le PATH (Homebrew)
+    for (final path in ['/opt/homebrew/bin/vlc', '/usr/local/bin/vlc']) {
+      if (File(path).existsSync()) return path;
+    }
+  }
+
+  // Défaut Linux (et repli macOS) : commande du PATH
   return 'vlc';
 }
 
