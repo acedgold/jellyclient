@@ -1,0 +1,61 @@
+name: Build Windows portable
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Tag de la release où attacher le zip"
+        required: true
+        default: "v1.0.0"
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Flutter 3.41.9
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.9"
+          channel: stable
+          cache: true
+
+      - name: Dépendances Dart/Flutter
+        run: flutter pub get
+
+      - name: Générer le code (build_runner)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Build + packaging portable (VLC inclus, zip)
+        run: .\portage\windows\build_portable.ps1
+
+      - name: Déterminer le tag de release
+        id: tag
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -like 'refs/tags/*') {
+            $t = $env:GITHUB_REF -replace 'refs/tags/',''
+          } else {
+            $t = '${{ github.event.inputs.release_tag }}'
+          }
+          "tag=$t" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Release cible : $t"
+
+      - name: Attacher le zip à la release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ steps.tag.outputs.tag }} dist\JellyClient-Windows-portable.zip --clobber
+
+      - name: Sauvegarder aussi comme artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: JellyClient-Windows-portable
+          path: dist/JellyClient-Windows-portable.zip
