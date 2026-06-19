@@ -1,18 +1,30 @@
 # JellyClient — TODO
 
-> Les TODO par plateforme sont dans les fichiers dédiés :
-> - **`LINUX.md`** (section "Ce qui reste à faire") — 2 items (card hover élargie, palette_generator)
-> - **`WINDOWS.md`** (section "Checklist de test") — portage à compiler + 4 adaptations à tester
+> Détails par plateforme : **`LINUX.md`** et **`WINDOWS.md`**.
 
-## Résumé
+## Fait (v1.0.1 → v1.0.4)
+- [x] Build & distribution Windows en cloud (GitHub Actions) + zip portable VLC
+- [x] Distribution Linux (`portage/linux/package.sh`) + release GitHub par version
+- [x] Liens « latest » permanents + branding page de connexion (streaming)
+- [x] Version dans la barre de titre + icône de fenêtre Linux
+- [x] Fix bibliothèque vide au retour + suppression filtres type
+- [x] Page de login dédiée (avatars publics + manuel + changer de serveur, responsive)
+- [x] Icône sessions actives réservée aux administrateurs
+- [x] Durcissement sécurité (détails en mémoire privée)
+
+## À faire
+
+### Multi-plateforme
+- [ ] Confirmer à l'usage sur Windows W11 : lecture VLC (survie du process), instance
+      unique, persistance de session, ouverture URL IMDb
+- [ ] Branding du 2ᵉ serveur Jellyfin (en attente d'accès)
 
 ### Linux
 - [ ] Card hover élargie (scale + popup débordant, style Netflix desktop)
 - [ ] Remplacer `palette_generator` (discontinued)
 
-### Windows
-- [ ] Adapter `platform_utils.dart` : `xdg-open` → `cmd /c start <url>`
-- [ ] Tester `ProcessStartMode.normal` (VLC survit-il à la fermeture de l'app ?)
-- [ ] Tester `flutter_secure_storage` (tokens persistent via Credential Manager ?)
-- [ ] Tester instance unique (PID lock sur `%APPDATA%`)
-- [ ] Compiler sur PC Windows avec VS2022 et valider la checklist `WINDOWS.md`
+### iOS
+- [ ] Build iOS (lecteur interne, `url_launcher`, pas d'`exit()`)
+
+### Maintenance versionnage
+- [ ] À chaque release : bumper la version dans la barre de titre (2 fichiers natifs)

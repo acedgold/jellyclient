@@ -1,13 +1,16 @@
-# JellyClient — Windows (portage en cours)
+# JellyClient — Windows
 
-Référence : voir `LINUX.md` pour la liste complète des features à atteindre.  
-Parité : voir `FEATURES.md` — toutes les lignes Windows=⬜ sont à implémenter.  
-Objectif : parité fonctionnelle totale avec la version Linux.
+> **MAJ v1.0.4** : Windows est désormais **compilé automatiquement en cloud**
+> (GitHub Actions, `.github/workflows/windows-build.yml`) et publié à chaque
+> release sous forme de **zip portable (VLC inclus)**. Plus besoin de compiler
+> localement. Procédure de build/packaging : [`portage/windows/BUILD.md`](portage/windows/BUILD.md).
+> Lien toujours-à-jour : `…/releases/latest/download/JellyClient-Windows-portable.zip`.
 
-> Quand tu implémentes une feature → mets ✅ dans la colonne Windows de `FEATURES.md`.
+Parité : voir `FEATURES.md`. Le code étant le même Flutter, les features sont
+présentes dès le build cloud ; reste à **confirmer à l'usage sur W11** (lecture
+VLC, instance unique, persistance token, ouverture URL).
 
-**État global** : codebase prête, target Windows créée, icône faite, scripts de build prêts.  
-**Reste** : compiler sur machine Windows (VS2022), tester, corriger les 4 adaptations plateforme.
+---
 
 ---
 

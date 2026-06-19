@@ -42,7 +42,38 @@ done
 gtk-update-icon-cache -f -t ~/.local/share/icons/hicolor/
 ```
 
-## État actuel (2026-05-15) — Complet
+## État actuel (2026-06-19) — v1.0.4
+
+Version dans `pubspec.yaml` : `1.0.4+5`. Affichée dans la barre de titre de la
+fenêtre (`JellyClient v1.0.x`, en dur dans `linux/runner/my_application.cc` +
+`windows/runner/main.cpp` — à bumper à chaque version) et sous le titre de
+l'écran de connexion (dynamique via `package_info_plus`).
+
+### Authentification — page de login dédiée (v1.0.3/1.0.4)
+- Flux 2 pages style Jellyfin : **« Ajouter un serveur » = URL seule** →
+  `login_screen.dart` (avatars des utilisateurs publics + bouton
+  « Connexion manuelle » + bouton « Changer de serveur »).
+- Page de login **responsive** (police/avatars adaptatifs) + grille dynamique.
+- Séparation `KnownServer` (URL+nom) / `ServerProfile` (compte).
+- Icône « sessions actives » réservée aux administrateurs.
+- `profiles_screen.dart` **supprimé** (obsolète).
+- **Durcissement sécurité** — *détails uniquement en mémoire privée, pas ici (dépôt public).*
+
+### Distribution & versionnage
+- **Une release GitHub par correctif** (`vX.Y.Z`), assets aux noms constants →
+  liens « latest » permanents : `…/releases/latest/download/<asset>`.
+- **Windows** : build cloud via **GitHub Actions** (`.github/workflows/windows-build.yml`),
+  zip portable VLC inclus. **Linux** : `portage/linux/package.sh` → `.tar.gz`.
+- Wording commits/release : **sécurité = générique**, fonctionnalités = explicite.
+
+### Correctifs marquants (v1.0.1 → 1.0.2)
+- Bibliothèque vide au retour (population fiable, plus de dépendance au `ref.listen`) ;
+  suppression des filtres type ; parsing API null-safe.
+- Version affichée + icône de fenêtre Linux (`gtk_window_set_icon_name`).
+
+---
+
+## État (2026-05-15) — base Netflix
 
 ### Optimisations performance (2026-05-15)
 - **AppBar alpha** : `double _appBarAlpha + setState` → `ValueNotifier<double> + ListenableBuilder` → plus aucun rebuild de la page pendant le scroll (60fps → 0 rebuild/frame)
@@ -120,6 +151,14 @@ gtk-update-icon-cache -f -t ~/.local/share/icons/hicolor/
 15. **`getIntroTimestamps`** retourne `null` silencieusement si plugin IntroSkipper absent — pas de gestion d'erreur côté UI
 16. **`setState` dans `_onScroll`** : NE PAS remettre — utiliser `ValueNotifier` pour tout état lié au scroll
 17. **`watchlistProvider.select()`** obligatoire dans `MediaCard` — sans `.select()` toutes les cards rebuildbent à chaque changement de favori
+18. **`routerProvider` ne doit PAS `watch(activeServerProvider)`** — sinon le router est recréé à la connexion et repart sur `/login`. Lire l'état en direct via `ref.read` dans `redirect`.
+19. **`~/bin/jelly` fait `pkill -f jellyclient`** → tue aussi un shell dont la commande contient « jellyclient ». Pour scripter un lancement : `setsid bash -c '… jellyclient …' &` détaché ; tuer l'ancienne instance avec `pkill -x jellyclient` (nom exact).
+20. **Build Windows impossible depuis Linux** (pas de cross-compile Flutter desktop) → passer par GitHub Actions.
+21. **Version dans la barre de titre** codée en dur dans 2 fichiers natifs (`my_application.cc` ×2, `main.cpp`) → à bumper à chaque release.
+
+> ⚠️ Détails d'**authentification/sécurité** (gestion de session, stockage des
+> identifiants, permissions) : **volontairement absents de ce fichier** (dépôt
+> public). Ils sont documentés en mémoire privée.
 
 ## Serveur Jellyfin de référence
 

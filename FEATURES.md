@@ -5,17 +5,26 @@ Un agent qui implémente une feature sur sa plateforme met ✅ dans sa colonne e
 
 Légende : ✅ Fait · ⬜ À faire · N/A Non applicable · 🔄 En cours
 
+> **Windows depuis v1.0.4** : la version Windows est **compilée en cloud** (GitHub
+> Actions) et publiée à chaque release. Le code étant le même Flutter, les ⬜
+> ci-dessous sont en pratique présents sur Windows dès le build — restent à
+> confirmer à l'usage sur W11.
+
 ---
 
-## Auth & Serveurs
+## Auth & Serveurs (refonte v1.0.3/1.0.4)
 
 | Feature | Linux | Windows | Notes de portage |
 |---|:---:|:---:|---|
-| Ajout serveur (URL + login/mot de passe) | ✅ | ⬜ | Identique Flutter — rien à changer |
-| Auto-login au démarrage (token persistant) | ✅ | ⬜ | `flutter_secure_storage` → Credential Manager W11 (à tester) |
-| Multi-serveurs + switch actif | ✅ | ⬜ | Identique Flutter |
-| Profils utilisateurs (style Netflix) | ✅ | ⬜ | Identique Flutter |
-| DeviceId UUID unique (`jelly_device_id`) | ✅ | ⬜ | Identique Flutter |
+| « Ajouter un serveur » = **URL seule** | ✅ | ✅ | Identique Flutter |
+| **Page de login dédiée** : avatars utilisateurs publics | ✅ | ✅ | Identique Flutter |
+| **Connexion manuelle** (comptes cachés) | ✅ | ✅ | Identique Flutter |
+| **Changer de serveur** (pop-up) + responsive | ✅ | ✅ | Identique Flutter |
+| Icône « sessions actives » réservée aux administrateurs | ✅ | ✅ | Identique Flutter |
+| Multi-serveurs (`KnownServer` + `ServerProfile`) | ✅ | ✅ | Identique Flutter |
+| DeviceId UUID unique (`jelly_device_id`) | ✅ | ✅ | Identique Flutter |
+| Durcissement sécurité (détails en mémoire privée) | ✅ | ✅ | — |
+| ~~Profils « Qui regarde ? » (`profiles_screen`)~~ | ❌ | ❌ | **Supprimé** (obsolète) |
 
 ---
 
