@@ -5,6 +5,16 @@ Registre des bugs rencontrés. Mis à jour à chaque session.
 
 ---
 
+## 27. Taille des vignettes de la bibliothèque indépendante du réglage de l'accueil
+
+**Symptôme** : Le réglage de taille de vignette (petit/moyen/grand) choisi sur l'écran d'accueil n'a aucun effet quand on ouvre une bibliothèque — les vignettes gardent toujours la même taille.
+**Cause** : `_MediaGrid` et `_GridSkeleton` (`library_screen.dart`) étaient des `StatelessWidget` qui calculaient `cols = (maxWidth / 220).floor()` avec une largeur fixe de 220px, sans jamais lire `cardSizeProvider` (la grille ignorait le choix utilisateur).
+**Fix** : Convertir les deux en `ConsumerWidget`, lire `ref.watch(cardSizeProvider)` et diviser `maxWidth` par `_gridColWidths[cardSize]` (`[168, 220, 288]`) avec `clamp(2, 8)`. ✅ Corrigé 2026-06-19 (v1.0.5).
+**PIÈGE** : Tentative d'aligner la grille sur les **valeurs exactes de l'accueil** (`kCardWidths = [110, 138, 175]`) → ÉCHEC : ces largeurs sont trop petites, sur écran large le nombre de colonnes sature le `clamp` max pour les 3 tailles → plus aucune variation visible en bibliothèque. Garder des largeurs de colonne **espacées et dédiées à la grille** (`_gridColWidths`), distinctes du carrousel de l'accueil.
+**Règle** : Tout écran affichant des `MediaCard` doit dériver sa largeur/colonnes de `cardSizeProvider` — ne jamais hardcoder une largeur de carte fixe.
+
+---
+
 ## 24. Noms de personnes en rouge dans CastSection → illisible
 
 **Symptôme** : Dans la fiche film/série, les noms des réalisateurs/scénaristes/producteurs s'affichent en rouge (#E50914) souligné sur fond noir — difficile à lire, ressemble à un lien web des années 90.  

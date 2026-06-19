@@ -45,6 +45,10 @@ final serversProvider = StateProvider<List<ServerProfile>>((ref) {
 
 // ─── Card size (0=petit 1=moyen 2=grand) ──────────────────────────────────
 
+/// Largeur du poster (en px) selon la taille choisie. Partagé entre l'accueil
+/// (carrousels) et la bibliothèque (grille) pour des vignettes identiques.
+const kCardWidths = [110.0, 138.0, 175.0];
+
 final cardSizeProvider = StateProvider<int>((ref) {
   return ref.read(serverStorageProvider).getCardSize();
 });

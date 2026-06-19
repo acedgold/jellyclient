@@ -101,7 +101,8 @@ final _activeSessionsProvider = FutureProvider<List<JellySession>>((ref) async {
   return ref.read(jellyfinClientProvider).getSessions();
 });
 
-const _cardWidths = [110.0, 138.0, 175.0];
+// Largeurs partagées avec la bibliothèque — source unique dans app_providers.dart
+const _cardWidths = kCardWidths;
 
 // ─── HomeScreen ───────────────────────────────────────────────────────────────
 

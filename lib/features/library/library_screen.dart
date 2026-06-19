@@ -421,7 +421,13 @@ class _Pagination extends StatelessWidget {
   }
 }
 
-class _MediaGrid extends StatelessWidget {
+// Largeur cible d'une colonne de grille selon la taille de vignette choisie
+// (cardSizeProvider : 0=petit 1=moyen 2=grand). Valeurs espacées pour que les
+// 3 tailles donnent un nombre de colonnes distinct même sur écran large
+// (les valeurs de l'accueil saturaient le clamp → aucune variation visible).
+const _gridColWidths = [168.0, 220.0, 288.0];
+
+class _MediaGrid extends ConsumerWidget {
   final List<JellyItem> items;
   final dynamic client;
   final ScrollController? scrollController;
@@ -437,14 +443,13 @@ class _MediaGrid extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      final cols = (constraints.maxWidth / 220).floor().clamp(2, 7);
-      return GridView.builder(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colWidth = _gridColWidths[ref.watch(cardSizeProvider)];
+    return GridView.builder(
         controller: scrollController,
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: cols,
+        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: colWidth,
           childAspectRatio: 2 / 3,
           crossAxisSpacing: 10,
           mainAxisSpacing: 10,
@@ -467,21 +472,19 @@ class _MediaGrid extends StatelessWidget {
           );
         },
       );
-    });
   }
 }
 
-class _GridSkeleton extends StatelessWidget {
+class _GridSkeleton extends ConsumerWidget {
   const _GridSkeleton();
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      final cols = (constraints.maxWidth / 220).floor().clamp(2, 7);
-      return GridView.builder(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colWidth = _gridColWidths[ref.watch(cardSizeProvider)];
+    return GridView.builder(
         padding: const EdgeInsets.all(12),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: cols,
+        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: colWidth,
           childAspectRatio: 2 / 3,
           crossAxisSpacing: 10,
           mainAxisSpacing: 10,
@@ -489,6 +492,5 @@ class _GridSkeleton extends StatelessWidget {
         itemCount: 20,
         itemBuilder: (_, __) => const MediaCardSkeleton(),
       );
-    });
   }
 }
