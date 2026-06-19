@@ -66,7 +66,17 @@ Détails et table de compatibilité : [`portage/linux/BUILD.md`](portage/linux/B
 
 ## Installation (Windows)
 
-Voir [`portage/windows/BUILD.md`](portage/windows/BUILD.md) pour la procédure complète avec VLC portable.
+Même base Flutter que Linux (rien à réécrire). Sur un PC Windows avec Flutter +
+Visual Studio 2022 (charge « Desktop C++ »), une seule commande build l'app,
+intègre VLC portable et produit un zip partageable :
+
+```powershell
+.\portage\windows\build_portable.ps1
+# → dist\JellyClient-Windows-portable.zip (~90 Mo, VLC inclus, zéro config)
+```
+
+Le destinataire dézippe et lance `Lancer JellyClient.bat` — aucune installation.
+Procédure complète, partage GitHub et note SmartScreen : [`portage/windows/BUILD.md`](portage/windows/BUILD.md).
 
 ## Stack technique
 

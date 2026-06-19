@@ -1,108 +1,99 @@
-# JellyClient — Build Windows 11 (version portable)
+# JellyClient — Build & distribution Windows (portable, zéro config)
 
-## Prérequis (sur le PC Windows)
+La version Windows **n'est pas une réécriture** : c'est la même base Flutter que
+Linux, qui cible déjà Windows. Il n'y a donc rien à « porter » — juste à
+**compiler sur une machine Windows** puis à **emballer** le résultat.
 
-1. **Flutter SDK** — https://docs.flutter.dev/get-started/install/windows
-   ```powershell
-   # Vérifier l'installation
-   flutter doctor
-   ```
-   Vérifier que `Windows (desktop)` est coché.
-
-2. **Visual Studio 2022** avec les workloads :
-   - "Desktop development with C++"
-   - "Universal Windows Platform development"
-
-3. **Git** pour cloner le projet si besoin.
+Le script [`build_portable.ps1`](build_portable.ps1) fait tout en une commande :
+build release → téléchargement et intégration de **VLC portable** → lanceur +
+icône + LIRE_MOI → `dist\JellyClient-Windows-portable.zip` prêt à partager.
 
 ---
 
-## Étapes de build
+## Prérequis (PC Windows, une seule fois)
 
-### 1. Récupérer le code source
+1. **Flutter SDK** — https://docs.flutter.dev/get-started/install/windows
+   Après install : `flutter doctor` doit montrer **Windows (desktop)** OK.
+2. **Visual Studio 2022 Community** avec **uniquement** la charge de travail
+   **« Développement Desktop en C++ »**.
+   (La charge « UWP » n'est PAS nécessaire.)
+3. *(Optionnel)* **7-Zip** — si présent, VLC est extrait depuis le `.7z`
+   (plus léger) ; sinon le script bascule automatiquement sur le `.zip`.
 
-Cloner le dépôt ou copier le dossier `JellyClient/` sur le PC Windows :
-```powershell
-git clone https://github.com/<votre-utilisateur>/jellyclient.git C:\JellyClient
-```
+Git est optionnel : tu peux copier le dossier du projet via clé USB / réseau.
 
-### 2. Installer les dépendances
+---
 
-```powershell
-cd C:\JellyClient
-flutter pub get
-```
-
-### 3. Builder la version release
+## Build + packaging (1 commande)
 
 ```powershell
-flutter build windows --release
-```
-
-Le résultat sera dans :
-```
-build\windows\x64\runner\Release\
-```
-
-### 4. Packager en version portable
-
-Lancer le script PowerShell inclus :
-```powershell
+cd C:\JellyClient          # dossier du projet
 .\portage\windows\build_portable.ps1
 ```
 
-Ce script crée `dist\JellyClient-Windows-portable.zip`.
+Le script :
+- lance `flutter build windows --release` (sauter avec `-SkipBuild`) ;
+- télécharge VLC portable (~40 Mo) et l'intègre dans `vlc\` (sauter avec `-SkipVlc`) ;
+- produit **`dist\JellyClient-Windows-portable.zip`** (~90 Mo, VLC inclus).
+
+À la fin, la console affiche le chemin du zip et « VLC inclus : OUI ».
 
 ---
 
-## Contenu du bundle portable
+## Contenu du zip partagé
 
 ```
 JellyClient-Windows-portable/
-  jellyclient.exe          ← exécutable principal
-  jellyclient.ico          ← icône
-  flutter_windows.dll      ← moteur Flutter
-  *.dll                    ← dépendances
-  data/                    ← assets Flutter
-  README_WINDOWS.txt       ← instructions utilisateur
-  vlc/                     ← (optionnel) VLC portable
+  jellyclient.exe              ← exécutable
+  jellyclient.ico              ← icône
+  flutter_windows.dll, *.dll   ← moteur Flutter + dépendances
+  data/                        ← assets Flutter
+  vlc/vlc.exe                  ← VLC portable (détecté automatiquement)
+  Lancer JellyClient.bat       ← double-clic pour démarrer
+  Creer raccourci Bureau.ps1   ← raccourci Bureau optionnel
+  LIRE_MOI.txt                 ← instructions destinataire
 ```
 
-### VLC Portable (recommandé)
-
-Télécharger VLC portable depuis https://www.videolan.org/vlc/download-windows.html  
-Extraire dans `JellyClient-Windows-portable\vlc\`  
-Puis dans JellyClient Paramètres → Lecteur : `vlc\vlc.exe`
+JellyClient cherche VLC dans cet ordre : `vlc\vlc.exe` (bundlé) → Program Files
+→ PATH. Le bundle marche donc **sans aucune installation** chez le destinataire.
 
 ---
 
-## Données utilisateur (non portables entre machines)
+## Partager le zip (release GitHub)
 
-Les préférences sont stockées dans :
-```
-%LOCALAPPDATA%\dev.acedgold.jellyclient\
+Cohérent avec le paquet Linux. Sur le PC Windows, soit via l'interface web :
+**github.com/acedgold/jellyclient → Releases → v1.0.0 → Edit → glisser le zip**,
+soit en ligne de commande si `gh` est installé :
+
+```powershell
+gh release upload v1.0.0 dist\JellyClient-Windows-portable.zip
 ```
 
-Les tokens Jellyfin sont dans le Windows Credential Manager (liés à la session Windows).  
-Pour transférer un profil → re-se connecter sur la nouvelle machine.
+Lien de téléchargement obtenu :
+`https://github.com/acedgold/jellyclient/releases/download/v1.0.0/JellyClient-Windows-portable.zip`
+
+### ⚠️ Avertissement SmartScreen (normal, exe non signé)
+
+Au 1ᵉʳ lancement chez le destinataire, Windows affiche un écran bleu
+« Windows a protégé votre PC ». C'est attendu pour un exécutable non signé.
+Marche à suivre (à indiquer au destinataire) :
+**« Informations complémentaires » → « Exécuter quand même »**.
+
+La signature de code (certificat ~150-300 €/an) n'est pas justifiée pour un
+partage entre proches ; on assume cet avertissement.
 
 ---
 
-## Problèmes connus Windows
+## Données utilisateur
+
+- Préférences : `%LOCALAPPDATA%\dev.acedgold.jellyclient\`
+- Tokens Jellyfin : Windows Credential Manager (liés à la session Windows)
+- Transfert de profil → se reconnecter sur la nouvelle machine.
+
+## Problèmes connus
 
 | Problème | Solution |
 |---|---|
-| VLC non trouvé | Configurer le chemin complet dans Paramètres |
-| Fenêtre noire au démarrage | Attendre 2-3s (chargement Flutter first run) |
-| Erreur `flutter_secure_storage` | Vérifier que Windows Credential Manager est actif |
-
----
-
-## Commande build complète (copier-coller)
-
-```powershell
-cd C:\JellyClient
-flutter pub get
-flutter build windows --release
-.\portage\windows\build_portable.ps1
-```
+| Téléchargement VLC échoué (réseau) | Relancer, ou installer VLC sur le PC (détection PATH/Program Files) |
+| VLC non trouvé chez le destinataire | Renseigner le chemin complet dans Paramètres → Lecteur |
+| Fenêtre noire 2-3 s au 1ᵉʳ démarrage | Normal (chargement Flutter au premier run) |

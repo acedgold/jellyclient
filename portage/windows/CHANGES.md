@@ -49,25 +49,25 @@
 
 ---
 
-## Ce qui N'A PAS été adapté (hors scope v1)
+## État (mis à jour 2026-06-19)
 
-| Point | Action requise pour v2 |
+| Point | État |
 |---|---|
-| Icône `.ico` | Générer depuis SVG + placer dans `windows/runner/resources/` |
-| `flutter_launcher_icons` | Configurer pour Windows |
-| Instance unique sur Windows | Tester — devrait fonctionner |
-| VLC bundle portable | Documenter dans BUILD.md (manuel) |
+| Icône `.ico` | ✅ `windows/runner/resources/app_icon.ico` + `portage/windows/assets/jellyclient.ico` (copiée dans le bundle) |
+| VLC portable bundlé | ✅ téléchargé et intégré automatiquement par `build_portable.ps1` |
+| Packaging zip portable | ✅ `build_portable.ps1` → `dist\JellyClient-Windows-portable.zip` |
+| Piste Rust (`jellyclient-rs`) | ❌ **abandonnée et supprimée** (réécriture from-scratch trop complexe — la base Flutter conserve déjà toutes les fonctions) |
+
+> Le « portage » Windows se résume désormais à : **builder sur un PC Windows**
+> via `build_portable.ps1` (voir [BUILD.md](BUILD.md)). Aucune réécriture.
 
 ---
 
 ## Checklist avant de builder sur Windows
 
 - [ ] `flutter doctor` → Windows (desktop) ✅
-- [ ] Visual Studio 2022 avec "Desktop development with C++"
-- [ ] `flutter pub get` sans erreur
-- [ ] `flutter build windows --release` réussit
-- [ ] Lancer `.\portage\windows\build_portable.ps1`
-- [ ] Tester `jellyclient.exe`
-- [ ] Configurer le chemin VLC dans Paramètres
-- [ ] Tester lecture d'un film
-- [ ] Tester ouverture IMDb (badge dans fiche)
+- [ ] Visual Studio 2022 avec "Développement Desktop en C++" (charge UWP inutile)
+- [ ] `.\portage\windows\build_portable.ps1` (build + VLC + zip en 1 commande)
+- [ ] Tester le zip : dézipper → `Lancer JellyClient.bat`
+- [ ] Tester lecture d'un film (VLC bundlé) + ouverture IMDb (badge fiche)
+- [ ] Uploader le zip sur la release GitHub v1.0.0
