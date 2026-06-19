@@ -85,9 +85,19 @@ final _genreItemsProvider =
   return resp.items;
 });
 
+// Statut admin de l'utilisateur courant (gate l'icône "sessions actives").
+final _isAdminProvider = FutureProvider<bool>((ref) async {
+  final server = ref.watch(activeServerProvider);
+  if (server == null) return false;
+  return ref.read(jellyfinClientProvider).isCurrentUserAdmin();
+});
+
 final _activeSessionsProvider = FutureProvider<List<JellySession>>((ref) async {
   final server = ref.watch(activeServerProvider);
   if (server == null) return [];
+  // Réservé aux admins (l'endpoint /Sessions l'est aussi).
+  final isAdmin = await ref.watch(_isAdminProvider.future);
+  if (!isAdmin) return [];
   return ref.read(jellyfinClientProvider).getSessions();
 });
 
@@ -135,6 +145,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final cardSize = ref.watch(cardSizeProvider);
     final sessionCount =
         ref.watch(_activeSessionsProvider).valueOrNull?.length ?? 0;
+    // Icône "sessions actives" réservée aux admins.
+    final isAdmin = ref.watch(_isAdminProvider).valueOrNull ?? false;
 
     // Nom du serveur calculé une fois (utilisé dans ListenableBuilder)
     final serverName = server != null
@@ -178,22 +190,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Badge live : personnage + chiffre vert
-                      _LiveBadgeButton(
-                        count: sessionCount,
-                        onTap: () {
-                          ref.invalidate(_activeSessionsProvider);
-                          showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (_) => ProviderScope(
-                              parent: ProviderScope.containerOf(context),
-                              child: const _LiveSessionsSheet(),
-                            ),
-                          );
-                        },
-                      ),
+                      // Badge live : sessions actives — ADMIN UNIQUEMENT
+                      if (isAdmin)
+                        _LiveBadgeButton(
+                          count: sessionCount,
+                          onTap: () {
+                            ref.invalidate(_activeSessionsProvider);
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (_) => ProviderScope(
+                                parent: ProviderScope.containerOf(context),
+                                child: const _LiveSessionsSheet(),
+                              ),
+                            );
+                          },
+                        ),
                       // 3 boutons taille vignettes
                       _CardSizeButtons(
                         current: cardSize,

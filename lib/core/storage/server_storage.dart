@@ -45,9 +45,45 @@ class ServerStorage {
   final _secure = const FlutterSecureStorage();
   String _deviceId = 'jellyclient-unknown';
 
+  // Cache mémoire des tokens (jamais écrits en clair sur disque).
+  final Map<String, String> _tokens = {};
+
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
+    await _loadTokens();
     _migrateKnownServersFromProfiles();
+  }
+
+  /// Charge les tokens depuis le coffre sécurisé, et MIGRE les anciens tokens
+  /// stockés en clair dans les préférences vers le coffre (puis les efface).
+  Future<void> _loadTokens() async {
+    final raw = _prefs.getStringList(_kServers) ?? [];
+    if (raw.isEmpty) return;
+    var rewrite = false;
+    final cleaned = <String>[];
+    for (final s in raw) {
+      final map = jsonDecode(s) as Map<String, dynamic>;
+      final id = map['id'] as String?;
+      if (id == null) {
+        cleaned.add(s);
+        continue;
+      }
+      final inJson = (map['accessToken'] as String?) ?? '';
+      final secure = await _secure.read(key: '$_kTokenPrefix$id') ?? '';
+      final token = secure.isNotEmpty ? secure : inJson;
+      if (token.isNotEmpty) {
+        _tokens[id] = token;
+        if (secure.isEmpty) {
+          await _secure.write(key: '$_kTokenPrefix$id', value: token);
+        }
+      }
+      if (inJson.isNotEmpty) {
+        map['accessToken'] = ''; // ne jamais conserver le token en clair
+        rewrite = true;
+      }
+      cleaned.add(jsonEncode(map));
+    }
+    if (rewrite) await _prefs.setStringList(_kServers, cleaned);
   }
 
   void setDeviceId(String id) => _deviceId = id;
@@ -57,12 +93,20 @@ class ServerStorage {
 
   List<ServerProfile> getServers() {
     final raw = _prefs.getStringList(_kServers) ?? [];
-    return raw
-        .map((s) => ServerProfile.fromJson(jsonDecode(s) as Map<String, dynamic>))
-        .toList();
+    return raw.map((s) {
+      final p = ServerProfile.fromJson(jsonDecode(s) as Map<String, dynamic>);
+      // Le token vient du cache (coffre sécurisé), jamais des préférences.
+      return p.copyWith(accessToken: _tokens[p.id] ?? '');
+    }).toList();
   }
 
+  // Sérialise SANS le token (jamais écrit en clair dans les préférences).
+  String _encodeWithoutToken(ServerProfile s) =>
+      jsonEncode(s.copyWith(accessToken: '').toJson());
+
   Future<void> saveServer(ServerProfile server) async {
+    _tokens[server.id] = server.accessToken;
+    await _secure.write(key: '$_kTokenPrefix${server.id}', value: server.accessToken);
     final servers = getServers();
     final idx = servers.indexWhere((s) => s.id == server.id);
     if (idx >= 0) {
@@ -72,18 +116,18 @@ class ServerStorage {
     }
     await _prefs.setStringList(
       _kServers,
-      servers.map((s) => jsonEncode(s.toJson())).toList(),
+      servers.map(_encodeWithoutToken).toList(),
     );
-    await _secure.write(key: '$_kTokenPrefix${server.id}', value: server.accessToken);
     // S'assurer que le serveur est aussi enregistré comme serveur connu.
     await saveKnownServer(KnownServer.fromUrl(server.url, name: server.name));
   }
 
   Future<void> deleteServer(String serverId) async {
+    _tokens.remove(serverId);
     final servers = getServers()..removeWhere((s) => s.id == serverId);
     await _prefs.setStringList(
       _kServers,
-      servers.map((s) => jsonEncode(s.toJson())).toList(),
+      servers.map(_encodeWithoutToken).toList(),
     );
     await _secure.delete(key: '$_kTokenPrefix$serverId');
     await _prefs.remove('$_kLastLoginPrefix$serverId');
@@ -209,7 +253,7 @@ class ServerStorage {
   }
 
   Future<String?> getToken(String serverId) async {
-    return _secure.read(key: '$_kTokenPrefix$serverId');
+    return _tokens[serverId] ?? await _secure.read(key: '$_kTokenPrefix$serverId');
   }
 
   // ─── UI Preferences ───────────────────────────────────────────────────

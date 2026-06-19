@@ -432,6 +432,19 @@ class JellyfinClient {
 
   // ─── Sessions actives ─────────────────────────────────────────────────────
 
+  /// L'utilisateur courant est-il administrateur ? (Policy.IsAdministrator)
+  Future<bool> isCurrentUserAdmin() async {
+    try {
+      final resp = await _dio.get('$_baseUrl/Users/Me',
+          options: Options(receiveTimeout: const Duration(seconds: 8)));
+      final data = resp.data as Map<String, dynamic>;
+      final policy = data['Policy'] as Map<String, dynamic>?;
+      return policy?['IsAdministrator'] as bool? ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<List<JellySession>> getSessions() async {
     try {
       final resp = await _dio.get(

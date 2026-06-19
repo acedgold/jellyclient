@@ -57,8 +57,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     await _activateProfile(profile, server);
   }
 
-  Future<void> _onAvatarTap(
-      KnownServer server, String userId, String username) async {
+  Future<void> _onAvatarTap(KnownServer server, String userId, String username,
+      bool hasPassword) async {
     final storage = ref.read(serverStorageProvider);
     final existing = storage
         .getProfilesForServer(server.url)
@@ -67,6 +67,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (existing != null && storage.hasValidSession(existing.id)) {
       await _activateProfile(existing, server); // < 24 h → entrée directe
       if (mounted) context.go('/home');
+    } else if (!hasPassword) {
+      // Compte sans mot de passe (ex. demo) → connexion directe.
+      try {
+        await _authenticate(server, username, '');
+        if (mounted) context.go('/home');
+      } catch (_) {
+        if (mounted) _showLoginDialog(server, presetUsername: username);
+      }
     } else {
       await _showLoginDialog(server, presetUsername: username);
     }
@@ -168,37 +176,57 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     final usersAsync = ref.watch(_publicUsersProvider(server.url));
+    // Échelle responsive : tout (police, espacements, avatars) se met à
+    // l'échelle selon la largeur de la fenêtre.
+    final scale =
+        (MediaQuery.sizeOf(context).width / 1100).clamp(0.72, 1.55);
 
     return Scaffold(
       backgroundColor: const Color(0xFF0D0D0D),
       body: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 48),
-            const Text(
+            SizedBox(height: 40 * scale),
+            Text(
               'JellyClient',
               style: TextStyle(
-                color: Color(0xFFE50914),
-                fontSize: 32,
+                color: const Color(0xFFE50914),
+                fontSize: 32 * scale,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 1,
               ),
             ),
-            const SizedBox(height: 8),
-            const Text('Qui se connecte ?',
-                style: TextStyle(color: Colors.white70, fontSize: 18)),
-            const SizedBox(height: 6),
-            // Nom du serveur, cliquable pour changer
+            SizedBox(height: 8 * scale),
+            Text('Qui se connecte ?',
+                style: TextStyle(color: Colors.white70, fontSize: 18 * scale)),
+            SizedBox(height: 10 * scale),
+            // Nom du serveur courant (information)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.dns_outlined,
+                    size: 18 * scale, color: const Color(0xFFAAAAAA)),
+                SizedBox(width: 8 * scale),
+                Text(
+                  _hostOf(server.name),
+                  style: TextStyle(
+                    color: const Color(0xFFDDDDDD),
+                    fontSize: 17 * scale,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            // Bouton explicite pour changer de serveur (ouvre le pop-up)
             TextButton.icon(
               onPressed: _showServerPicker,
-              icon: const Icon(Icons.dns_outlined,
-                  size: 14, color: Color(0xFF777777)),
-              label: Text(
-                _hostOf(server.name),
-                style: const TextStyle(color: Color(0xFF777777), fontSize: 12),
-              ),
+              icon: Icon(Icons.swap_horiz_rounded,
+                  size: 18 * scale, color: const Color(0xFFE50914)),
+              label: Text('Changer de serveur',
+                  style: TextStyle(
+                      color: const Color(0xFFE50914), fontSize: 13 * scale)),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 16 * scale),
             Expanded(
               child: usersAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
@@ -212,6 +240,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     users: visible,
                     server: server,
                     storage: ref.read(serverStorageProvider),
+                    scale: scale,
                     onTap: _onAvatarTap,
                   );
                 },
@@ -219,13 +248,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
             // Bouton connexion manuelle (comptes cachés)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
+              padding: EdgeInsets.symmetric(vertical: 18 * scale),
               child: TextButton.icon(
                 onPressed: () => _showLoginDialog(server),
-                icon: const Icon(Icons.password_rounded,
-                    size: 18, color: Colors.white60),
-                label: const Text('Connexion manuelle',
-                    style: TextStyle(color: Colors.white60, fontSize: 14)),
+                icon: Icon(Icons.password_rounded,
+                    size: 18 * scale, color: Colors.white60),
+                label: Text('Connexion manuelle',
+                    style:
+                        TextStyle(color: Colors.white60, fontSize: 14 * scale)),
               ),
             ),
           ],
@@ -260,44 +290,68 @@ class _UsersGrid extends StatelessWidget {
   final List<Map<String, dynamic>> users;
   final KnownServer server;
   final ServerStorage storage;
-  final void Function(KnownServer, String userId, String username) onTap;
+  final double scale;
+  final void Function(
+      KnownServer, String userId, String username, bool hasPassword) onTap;
 
   const _UsersGrid({
     required this.users,
     required this.server,
     required this.storage,
+    required this.scale,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 150,
-        childAspectRatio: 0.78,
-        crossAxisSpacing: 20,
-        mainAxisSpacing: 20,
-      ),
-      itemCount: users.length,
-      itemBuilder: (context, i) {
+    return LayoutBuilder(builder: (context, constraints) {
+      final n = users.length;
+      // Taille de tuile cible : plus il y a d'utilisateurs, plus elles sont
+      // compactes. Mise à l'échelle selon l'écran, et bornée par la largeur
+      // (toujours ≥ 2 colonnes).
+      final pad = 32 * scale;
+      final width = constraints.maxWidth - pad * 2;
+      double extent = (n <= 4
+              ? 170
+              : n <= 12
+                  ? 145
+                  : n <= 24
+                      ? 120
+                      : 100) *
+          scale;
+      final maxExtent = width > 0 ? (width / 2) : extent;
+      extent = extent.clamp(78.0, maxExtent < 78.0 ? 78.0 : maxExtent);
+
+      return GridView.builder(
+        padding: EdgeInsets.symmetric(horizontal: pad),
+        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: extent,
+          childAspectRatio: 0.78,
+          crossAxisSpacing: 18 * scale,
+          mainAxisSpacing: 18 * scale,
+        ),
+        itemCount: users.length,
+        itemBuilder: (context, i) {
         final u = users[i];
         final userId = u['Id'] as String;
         final name = (u['Name'] as String?) ?? '';
+        final hasPassword = u['HasPassword'] as bool? ?? true;
         final profile = storage
             .getProfilesForServer(server.url)
             .where((p) => p.userId == userId)
             .firstOrNull;
         final remembered =
             profile != null && storage.hasValidSession(profile.id);
-        return _UserAvatar(
-          name: name,
-          avatarUrl: '${server.url}/Users/$userId/Images/Primary?maxWidth=200',
-          remembered: remembered,
-          onTap: () => onTap(server, userId, name),
-        );
-      },
-    );
+          return _UserAvatar(
+            name: name,
+            avatarUrl:
+                '${server.url}/Users/$userId/Images/Primary?maxWidth=200',
+            remembered: remembered,
+            onTap: () => onTap(server, userId, name, hasPassword),
+          );
+        },
+      );
+    });
   }
 }
 
@@ -325,63 +379,76 @@ class _UserAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Stack(
-            children: [
-              Container(
-                width: 96,
-                height: 96,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: remembered
-                      ? Border.all(color: const Color(0xFFE50914), width: 2)
-                      : null,
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(remembered ? 6 : 8),
-                  child: CachedNetworkImage(
-                    imageUrl: avatarUrl,
-                    fit: BoxFit.cover,
-                    errorWidget: (_, __, ___) => Container(
-                      color: _colorFromName(name),
-                      child: Center(
-                        child: Text(
-                          name.isNotEmpty ? name[0].toUpperCase() : '?',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 38,
-                              fontWeight: FontWeight.w700),
+    // Tout est relatif à la largeur de la cellule → l'avatar et le nom
+    // grossissent/rétrécissent avec la grille.
+    return LayoutBuilder(builder: (context, c) {
+      final w = c.maxWidth;
+      final labelSize = (w * 0.14).clamp(10.0, 18.0);
+      final radius = (w * 0.08).clamp(6.0, 14.0);
+      return GestureDetector(
+        onTap: onTap,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              children: [
+                AspectRatio(
+                  aspectRatio: 1,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(radius),
+                      border: remembered
+                          ? Border.all(
+                              color: const Color(0xFFE50914),
+                              width: (w * 0.025).clamp(2.0, 4.0))
+                          : null,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(radius),
+                      child: CachedNetworkImage(
+                        imageUrl: avatarUrl,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => Container(
+                          color: _colorFromName(name),
+                          child: Center(
+                            child: Text(
+                              name.isNotEmpty ? name[0].toUpperCase() : '?',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: w * 0.4,
+                                  fontWeight: FontWeight.w700),
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
+                // Pastille "session active" (connexion 1 clic)
+                if (remembered)
+                  Positioned(
+                    right: w * 0.05,
+                    top: w * 0.05,
+                    child: Icon(Icons.flash_on_rounded,
+                        color: const Color(0xFFE50914),
+                        size: (w * 0.17).clamp(14.0, 24.0)),
+                  ),
+              ],
+            ),
+            SizedBox(height: w * 0.07),
+            Flexible(
+              child: Text(
+                name,
+                style: TextStyle(color: Colors.white70, fontSize: labelSize),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
               ),
-              // Pastille "session active" (connexion 1 clic)
-              if (remembered)
-                const Positioned(
-                  right: 4,
-                  top: 4,
-                  child: Icon(Icons.flash_on_rounded,
-                      color: Color(0xFFE50914), size: 16),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            name,
-            style: const TextStyle(color: Colors.white70, fontSize: 13),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
+            ),
+          ],
+        ),
+      );
+    });
   }
 }
 
@@ -460,8 +527,8 @@ class _ManualFormState extends State<_ManualForm> {
   }
 
   Future<void> _submit() async {
-    if (_userCtrl.text.trim().isEmpty || _passCtrl.text.isEmpty) {
-      setState(() => _error = 'Identifiant et mot de passe requis');
+    if (_userCtrl.text.trim().isEmpty) {
+      setState(() => _error = 'Nom d\'utilisateur requis');
       return;
     }
     setState(() {
