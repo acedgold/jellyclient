@@ -77,14 +77,6 @@ class _DetailContent extends HookConsumerWidget {
 
   const _DetailContent({required this.item, required this.client});
 
-  String _formatRuntime(int? ticks) {
-    if (ticks == null) return '';
-    final minutes = ticks ~/ 600000000;
-    final h = minutes ~/ 60;
-    final m = minutes % 60;
-    return h > 0 ? '${h}h ${m}min' : '${m}min';
-  }
-
   List<MediaStream> _streams(String type) =>
       item.mediaStreams?.where((s) => s.type == type).toList() ?? [];
 
@@ -107,7 +99,6 @@ class _DetailContent extends HookConsumerWidget {
     return CustomScrollView(
       slivers: [
         SliverAppBar(
-          expandedHeight: 220,
           pinned: true,
           backgroundColor: headerBg,
           leading: BackButton(
@@ -120,27 +111,13 @@ class _DetailContent extends HookConsumerWidget {
               onPressed: () => context.go('/home'),
             ),
           ],
-          flexibleSpace: FlexibleSpaceBar(
-            background: Stack(
-              fit: StackFit.expand,
-              children: [
-                CachedNetworkImage(
-                  imageUrl: backdropUrl,
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
-                  errorWidget: (_, __, ___) => Container(color: const Color(0xFF1A1A1A)),
-                ),
-                Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.transparent, Color(0xCC0D0D0D)],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+        ),
+        SliverToBoxAdapter(
+          child: _PosterHeader(
+            item: item,
+            backdropUrl: backdropUrl,
+            posterUrl: posterUrl,
+            fallbackColor: headerBg,
           ),
         ),
         SliverToBoxAdapter(
@@ -149,42 +126,7 @@ class _DetailContent extends HookConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ─── Titre ────────────────────────────────────────────
-                Text(item.name, style: Theme.of(context).textTheme.headlineLarge),
-                const SizedBox(height: 8),
-
-                // ─── Métadonnées ──────────────────────────────────────
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    if (item.productionYear != null)
-                      _Chip(label: '${item.productionYear}'),
-                    if (item.runTimeTicks != null)
-                      _Chip(label: _formatRuntime(item.runTimeTicks)),
-                    if (item.communityRating != null)
-                      _Chip(
-                        label: '★ ${item.communityRating!.toStringAsFixed(1)}',
-                        color: const Color(0xFFFFB800),
-                      ),
-                    if (item.officialRating != null)
-                      _Chip(label: item.officialRating!, outlined: true),
-                  ],
-                ),
-                if (item.genres?.isNotEmpty == true) ...[
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: item.genres!.map((g) => GestureDetector(
-                      onTap: () => context.go('/genre/${Uri.encodeComponent(g)}'),
-                      child: _Chip(label: g, outlined: true, clickable: true),
-                    )).toList(),
-                  ),
-                ],
-
                 // ─── Bouton Lire (style Netflix) ──────────────────────
-                const SizedBox(height: 20),
                 // ─── Bouton Lire → sheet sélection pistes ─────────────
                 SizedBox(
                   width: double.infinity,
@@ -980,6 +922,170 @@ class _SeenButton extends ConsumerWidget {
   }
 }
 
+String _formatRuntime(int? ticks) {
+  if (ticks == null) return '';
+  final minutes = ticks ~/ 600000000;
+  final h = minutes ~/ 60;
+  final m = minutes % 60;
+  return h > 0 ? '${h}h ${m}min' : '${m}min';
+}
+
+/// En-tête de fiche détail : affiche (poster portrait complète) + infos
+/// (titre, métadonnées, genres) posées sur le backdrop flouté et assombri.
+class _PosterHeader extends StatelessWidget {
+  final JellyItem item;
+  final String backdropUrl;
+  final String posterUrl;
+  final Color fallbackColor;
+
+  const _PosterHeader({
+    required this.item,
+    required this.backdropUrl,
+    required this.posterUrl,
+    required this.fallbackColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const posterW = 150.0;
+    return LayoutBuilder(
+      builder: (context, c) {
+        // Grande image hero au ratio 16:9, plafonnée pour ne pas remplir l'écran.
+        final heroH = (c.maxWidth * 9 / 16).clamp(300.0, 460.0);
+        return SizedBox(
+          height: heroH,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // ─── Grande image backdrop ───────────────────────────
+              CachedNetworkImage(
+                imageUrl: backdropUrl,
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+                errorWidget: (_, __, ___) => Container(color: fallbackColor),
+              ),
+              // ─── Dégradé : fond lisible + fondu vers le contenu ──
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0x00000000),
+                      Color(0x99000000),
+                      Color(0xF20D0D0D),
+                    ],
+                    stops: [0.0, 0.55, 1.0],
+                  ),
+                ),
+              ),
+              // ─── Affiche + infos, à cheval sur le bas de l'image ─
+              Align(
+                alignment: Alignment.bottomLeft,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: SizedBox(
+                          width: posterW,
+                          child: AspectRatio(
+                            aspectRatio: 2 / 3,
+                            child: CachedNetworkImage(
+                              imageUrl: posterUrl,
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) =>
+                                  Container(color: const Color(0xFF1A1A1A)),
+                              errorWidget: (_, __, ___) => Container(
+                                color: const Color(0xFF1A1A1A),
+                                child: const Icon(Icons.movie_outlined,
+                                    color: Color(0xFF555555), size: 40),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 18),
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.name,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    shadows: const [
+                                      Shadow(
+                                          color: Colors.black87,
+                                          blurRadius: 8),
+                                    ],
+                                  ),
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 4,
+                              children: [
+                                if (item.productionYear != null)
+                                  _Chip(label: '${item.productionYear}'),
+                                if (item.runTimeTicks != null)
+                                  _Chip(
+                                      label:
+                                          _formatRuntime(item.runTimeTicks)),
+                                if (item.communityRating != null)
+                                  _Chip(
+                                    label:
+                                        '★ ${item.communityRating!.toStringAsFixed(1)}',
+                                    color: const Color(0xFFFFB800),
+                                  ),
+                                if (item.officialRating != null)
+                                  _Chip(
+                                      label: item.officialRating!,
+                                      outlined: true),
+                                if (item.userData?.played == true)
+                                  _Chip(
+                                      label: '✓ Vu',
+                                      color: const Color(0xFF46D369)),
+                              ],
+                            ),
+                            if (item.genres?.isNotEmpty == true) ...[
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 4,
+                                children: item.genres!
+                                    .map((g) => GestureDetector(
+                                          onTap: () => context.go(
+                                              '/genre/${Uri.encodeComponent(g)}'),
+                                          child: _Chip(
+                                              label: g,
+                                              outlined: true,
+                                              clickable: true),
+                                        ))
+                                    .toList(),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _Chip extends StatelessWidget {
   final String label;
   final Color? color;
@@ -993,7 +1099,8 @@ class _Chip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: outlined ? Colors.transparent : (color ?? const Color(0xFF2A2A2A)),
+        // Fond toujours neutre ; `color` ne teinte que le texte (cohérent avec _Badge série).
+        color: outlined ? Colors.transparent : const Color(0xFF2A2A2A),
         border: outlined ? Border.all(color: clickable ? const Color(0xFF666666) : const Color(0xFF444444)) : null,
         borderRadius: BorderRadius.circular(4),
       ),

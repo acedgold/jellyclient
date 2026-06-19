@@ -160,94 +160,156 @@ class _SeriesHeader extends ConsumerWidget {
     final client = ref.read(jellyfinClientProvider);
     final backdropUrl =
         client.getImageUrl(itemId: item.id, type: 'Backdrop', maxWidth: 1280);
+    final posterUrl = client.getImageUrl(itemId: item.id);
+    final topInset = MediaQuery.of(context).padding.top;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ─── Backdrop ──────────────────────────────────────────────
-        SizedBox(
-          height: 220,
-          width: double.infinity,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              CachedNetworkImage(
-                imageUrl: backdropUrl,
-                fit: BoxFit.cover,
-                alignment: Alignment.topCenter,
-                errorWidget: (_, __, ___) =>
-                    Container(color: const Color(0xFF1A1A1A)),
-              ),
-              Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0x440D0D0D), Color(0xFF0D0D0D)],
+        // ─── En-tête : grande image hero + affiche/infos en bas ─────
+        LayoutBuilder(
+          builder: (context, c) {
+            final heroH = (c.maxWidth * 9 / 16).clamp(300.0, 460.0);
+            return SizedBox(
+              height: heroH,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  CachedNetworkImage(
+                    imageUrl: backdropUrl,
+                    fit: BoxFit.cover,
+                    alignment: Alignment.topCenter,
+                    errorWidget: (_, __, ___) =>
+                        Container(color: const Color(0xFF1A1A1A)),
                   ),
-                ),
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color(0x00000000),
+                          Color(0x99000000),
+                          Color(0xF20D0D0D),
+                        ],
+                        stops: [0.0, 0.55, 1.0],
+                      ),
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.bottomLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: SizedBox(
+                              width: 150,
+                              child: AspectRatio(
+                                aspectRatio: 2 / 3,
+                                child: CachedNetworkImage(
+                                  imageUrl: posterUrl,
+                                  fit: BoxFit.cover,
+                                  placeholder: (_, __) => Container(
+                                      color: const Color(0xFF1A1A1A)),
+                                  errorWidget: (_, __, ___) => Container(
+                                    color: const Color(0xFF1A1A1A),
+                                    child: const Icon(Icons.tv_outlined,
+                                        color: Color(0xFF555555), size: 40),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 18),
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.name,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w800,
+                                        shadows: const [
+                                          Shadow(
+                                              color: Colors.black87,
+                                              blurRadius: 8),
+                                        ],
+                                      ),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 10),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 4,
+                                  children: [
+                                    if (item.productionYear != null)
+                                      _Badge('${item.productionYear}'),
+                                    if (seasonCount != null)
+                                      _Badge(
+                                          '$seasonCount saison${seasonCount! > 1 ? 's' : ''}'),
+                                    if (item.communityRating != null)
+                                      _Badge(
+                                          '★ ${item.communityRating!.toStringAsFixed(1)}',
+                                          color: const Color(0xFFFFB800)),
+                                    if (item.officialRating != null)
+                                      _Badge(item.officialRating!),
+                                    if ((item.userData?.unplayedItemCount ??
+                                            0) >
+                                        0)
+                                      _Badge(
+                                        '${item.userData!.unplayedItemCount} non vu${item.userData!.unplayedItemCount! > 1 ? 's' : ''}',
+                                        color: const Color(0xFFE50914),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: topInset + 4,
+                    left: 0,
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back_rounded,
+                          color: Colors.white),
+                      onPressed: () => context.canPop()
+                          ? context.pop()
+                          : context.go('/home'),
+                    ),
+                  ),
+                  Positioned(
+                    top: topInset + 4,
+                    right: 0,
+                    child: IconButton(
+                      icon: const Icon(Icons.home_outlined,
+                          color: Colors.white),
+                      tooltip: 'Accueil',
+                      onPressed: () => context.go('/home'),
+                    ),
+                  ),
+                ],
               ),
-              Positioned(
-                top: MediaQuery.of(context).padding.top + 4,
-                left: 0,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-                  onPressed: () =>
-                      context.canPop() ? context.pop() : context.go('/home'),
-                ),
-              ),
-              Positioned(
-                top: MediaQuery.of(context).padding.top + 4,
-                right: 0,
-                child: IconButton(
-                  icon: const Icon(Icons.home_outlined, color: Colors.white),
-                  tooltip: 'Accueil',
-                  onPressed: () => context.go('/home'),
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         ),
 
-        // ─── Contenu sous le backdrop ─────────────────────────────
+        // ─── Contenu sous l'en-tête ───────────────────────────────
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Titre
-              Text(
-                item.name,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 8),
-
-              // Badges
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  if (item.productionYear != null)
-                    _Badge('${item.productionYear}'),
-                  if (seasonCount != null)
-                    _Badge(
-                        '$seasonCount saison${seasonCount! > 1 ? 's' : ''}'),
-                  if (item.communityRating != null)
-                    _Badge('★ ${item.communityRating!.toStringAsFixed(1)}',
-                        color: const Color(0xFFFFB800)),
-                  if ((item.userData?.unplayedItemCount ?? 0) > 0)
-                    _Badge(
-                      '${item.userData!.unplayedItemCount} non vu${item.userData!.unplayedItemCount! > 1 ? 's' : ''}',
-                      color: const Color(0xFFE50914),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
               // Bouton Lire prochain épisode (style Netflix)
               _NextEpisodeButtonLarge(seriesId: item.id),
               const SizedBox(height: 8),
@@ -1569,13 +1631,17 @@ class _Badge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        // Style aligné sur _Chip (fiche film) : même padding/taille/poids.
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
           color: const Color(0xFF2A2A2A),
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(label,
-            style: TextStyle(color: color ?? const Color(0xFFCCCCCC), fontSize: 11)),
+            style: TextStyle(
+                color: color ?? const Color(0xFFCCCCCC),
+                fontSize: 14,
+                fontWeight: FontWeight.w500)),
       );
 }
 

@@ -50,16 +50,46 @@ String _langToCode(String? lang) {
   };
 }
 
-String? _audioLabelFromStreams(List<MediaStream> streams) {
-  final audio = streams.where((s) => s.type == 'Audio').toList();
-  if (audio.isEmpty) return null;
-  if (audio.length >= 2) return 'MULTI';
-  final lang = _langToCode(audio.first.language);
-  if (lang.isNotEmpty) return lang;
-  final codec = audio.first.codec?.toUpperCase();
-  if (codec != null && codec.isNotEmpty) {
-    return codec.substring(0, codec.length.clamp(0, 4));
+// Récupère un code langue depuis le DisplayTitle quand le champ Language est
+// vide (certaines releases écrivent la langue dans le titre de la piste, ex.
+// « VFF - AC3 », « Japanese - AAC »). Mots-clés distinctifs uniquement.
+String _langFromDisplayTitle(String? dt) {
+  if (dt == null || dt.isEmpty) return '';
+  final t = dt.toLowerCase();
+  const map = {
+    'french': 'FR', 'francais': 'FR', 'français': 'FR',
+    'vff': 'FR', 'vfq': 'FR', 'vfi': 'FR', 'truefrench': 'FR',
+    'english': 'EN', 'anglais': 'EN',
+    'japanese': 'JA', 'japonais': 'JA',
+    'italian': 'IT', 'korean': 'KR',
+    'spanish': 'ES', 'espanol': 'ES', 'español': 'ES',
+    'german': 'DE', 'deutsch': 'DE', 'allemand': 'DE',
+    'portuguese': 'PT', 'chinese': 'ZH', 'mandarin': 'ZH',
+    'arabic': 'AR', 'russian': 'RU',
+  };
+  for (final e in map.entries) {
+    if (t.contains(e.key)) return e.value;
   }
+  return '';
+}
+
+/// Code langue d'une piste : champ Language d'abord, sinon déduit du titre.
+String _streamLangCode(MediaStream s) {
+  final l = _langToCode(s.language);
+  return l.isNotEmpty ? l : _langFromDisplayTitle(s.displayTitle);
+}
+
+/// Badge langue audio d'une vignette :
+///   ≥2 langues distinctes → MULTI ; 1 langue → son code ; 0 → aucun badge.
+/// On n'affiche JAMAIS le codec (MP3/AAC…) : ce n'est pas une langue.
+String? _audioLabelFromStreams(List<MediaStream> streams) {
+  final codes = <String>{};
+  for (final s in streams.where((s) => s.type == 'Audio')) {
+    final c = _streamLangCode(s);
+    if (c.isNotEmpty) codes.add(c);
+  }
+  if (codes.length >= 2) return 'MULTI';
+  if (codes.length == 1) return codes.first;
   return null;
 }
 

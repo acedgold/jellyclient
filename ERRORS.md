@@ -5,6 +5,25 @@ Registre des bugs rencontrés. Mis à jour à chaque session.
 
 ---
 
+## 29. En-tête de fiche détail : image tronquée (« on ne voit que le haut »)
+
+**Symptôme** : Dans la fiche film/série, l'image du haut (Backdrop) était affichée sur 220px avec `BoxFit.cover` + `alignment: topCenter` → seule la bande supérieure était visible, rendu « mal proportionné ».
+**Fix final (style hero Jellyfin/Netflix)** : `_PosterHeader` (film) + `_SeriesHeader` (série) — **grande image backdrop 16:9 en haut** (`LayoutBuilder` → `heroH = (maxWidth*9/16).clamp(300,460)`, `BoxFit.cover` + `alignment: topCenter`), dégradé vertical transparent→`#0D0D0D` (`stops [0, 0.55, 1]`) pour lisibilité+fondu, et **affiche (poster 2:3) + infos posées à cheval sur le bas** (`Align(bottomLeft)` + `Row(crossAxisAlignment: end)`). `SliverAppBar` film réduit à une barre simple ; boutons back/accueil de la série en `Positioned`. `_formatRuntime` extrait en fonction top-level. Badges harmonisés (cf. note ci-dessous). ✅ 2026-06-19 (v1.0.6).
+**Itérations écartées** (pièges à ne pas refaire) : (1) backdrop flouté `ImageFiltered` → rejeté ; (2) backdrop pleine largeur en bande courte + `cover` → image trop zoomée, sujets coupés ; (3) `BoxFit.contain` en bande courte → image minuscule perdue au centre. **Conclusion géométrique** : une image paysage 16:9 ne peut être à la fois grande, entière ET dans une bande courte → il faut une zone au ratio 16:9 (d'où le hero haut). Le cadrage (`topCenter` vs `center`) ne règle pas un problème de **taille**.
+**Note badges** : `_Chip` (film) re-aligné sur `_Badge` (série) — fond gris constant `#2A2A2A`, `color` ne teinte que le **texte** (avant : `_Chip` colorait le fond → badge note or-sur-or illisible). Harmonisation au max : classification d'âge ajoutée à la série, badge « ✓ Vu » (vert) ajouté au film. Tailles/police identiques (14px, w500).
+
+---
+
+## 28. Badge langue audio des vignettes affiche le codec (MP3/AAC) au lieu de la langue
+
+**Symptôme** : Le badge langue d'une vignette affiche « MP3 » (film *Ninja Kid*) ou « AAC » (*Grimoire of Zero*) au lieu d'une langue — alors qu'il devrait montrer MULTI / FR / JA / EN…
+**Cause** : Dans `_audioLabelFromStreams` (`media_card.dart`), quand un média n'avait qu'une piste audio dont le champ `Language` était vide/`und`, `_langToCode` renvoyait `''` et le code **retombait sur `audio.first.codec`** → affichait le codec comme si c'était une langue.
+**Fix** : Réécriture — collecter les **langues distinctes** de toutes les pistes audio (`_streamLangCode` = champ `Language`, sinon déduction via `_langFromDisplayTitle` sur le `DisplayTitle`). ≥2 langues → `MULTI`, 1 → son code, 0 → `null` (**aucun badge**, jamais le codec). Choix utilisateur : pas de badge si langue inconnue. ✅ Corrigé 2026-06-19 (v1.0.6).
+**Bonus** : `MULTI` désormais basé sur le nombre de langues *distinctes* (2 pistes même langue → affiche la langue, plus « MULTI » à tort).
+**Règle** : Un badge de langue ne doit JAMAIS afficher un codec. Si la langue est inconnue, ne rien afficher.
+
+---
+
 ## 27. Taille des vignettes de la bibliothèque indépendante du réglage de l'accueil
 
 **Symptôme** : Le réglage de taille de vignette (petit/moyen/grand) choisi sur l'écran d'accueil n'a aucun effet quand on ouvre une bibliothèque — les vignettes gardent toujours la même taille.
