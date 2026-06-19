@@ -58,6 +58,19 @@ class ServersScreen extends ConsumerWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
+            const SizedBox(height: 4),
+            Text(
+              ref.watch(appVersionProvider).maybeWhen(
+                    data: (v) => 'Version $v',
+                    orElse: () => '',
+                  ),
+              style: const TextStyle(
+                color: Color(0xFFE50914),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
             const SizedBox(height: 6),
             const Text(
               'Sélectionner un serveur Jellyfin',

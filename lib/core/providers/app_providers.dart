@@ -1,7 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../api/jellyfin_client.dart';
 import '../api/models/jellyfin_models.dart';
 import '../storage/server_storage.dart';
+
+// ─── Version de l'app (lue depuis pubspec/build, mise à jour à chaque release) ─
+final appVersionProvider = FutureProvider<String>((ref) async {
+  final info = await PackageInfo.fromPlatform();
+  return info.version; // ex. "1.0.2"
+});
 
 // ─── Storage ──────────────────────────────────────────────────────────────
 
