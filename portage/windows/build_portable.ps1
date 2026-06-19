@@ -58,51 +58,78 @@ Write-Host "      Bundle copié." -ForegroundColor Green
 if (-not $SkipVlc) {
     Write-Host "[3/4] Intégration VLC portable..." -ForegroundColor Yellow
 
-    # Vérifier si 7-Zip est disponible pour extraire le .7z
+    # 7-Zip présent ? (sur les runners GitHub : oui)
     $SevenZip = "C:\Program Files\7-Zip\7z.exe"
     $Has7z    = Test-Path $SevenZip
 
-    if (-not $Has7z) {
-        Write-Host "      7-Zip non trouvé — téléchargement de VLC en ZIP standard..." -ForegroundColor DarkYellow
-        # Fallback : version ZIP (si disponible sur le miroir)
-        $VlcUrl = "https://get.videolan.org/vlc/3.0.21/win64/vlc-3.0.21-win64.zip"
+    # get.videolan.org répartit aléatoirement sur des miroirs ; certains renvoient
+    # une page HTML au lieu du binaire. On essaie plusieurs sources et on VALIDE
+    # le fichier (vraie archive d'au moins ~20 Mo) avant de l'utiliser.
+    if ($Has7z) {
+        $VlcUrls = @(
+            "https://get.videolan.org/vlc/3.0.21/win64/vlc-3.0.21-win64.7z",
+            "https://mirrors.ircam.fr/pub/videolan/vlc/3.0.21/win64/vlc-3.0.21-win64.7z",
+            "https://download.videolan.org/pub/videolan/vlc/3.0.21/win64/vlc-3.0.21-win64.7z"
+        )
+        $VlcZip = "$Dist\vlc_portable.7z"
+    } else {
+        $VlcUrls = @(
+            "https://get.videolan.org/vlc/3.0.21/win64/vlc-3.0.21-win64.zip",
+            "https://mirrors.ircam.fr/pub/videolan/vlc/3.0.21/win64/vlc-3.0.21-win64.zip"
+        )
         $VlcZip = "$Dist\vlc_portable.zip"
     }
 
-    # Télécharger VLC si pas déjà en cache
-    if (-not (Test-Path $VlcZip)) {
-        Write-Host "      Téléchargement VLC portable (~40 MB)..." -ForegroundColor Yellow
-        Write-Host "      URL : $VlcUrl" -ForegroundColor DarkGray
-        try {
-            $ProgressPreference = 'SilentlyContinue'
-            Invoke-WebRequest -Uri $VlcUrl -OutFile $VlcZip -UseBasicParsing
-            Write-Host "      VLC téléchargé." -ForegroundColor Green
-        } catch {
-            Write-Host "      AVERTISSEMENT : téléchargement VLC échoué." -ForegroundColor DarkYellow
-            Write-Host "      L'app fonctionnera si VLC est installé sur le PC." -ForegroundColor DarkGray
-            $VlcZip = $null
-        }
-    } else {
-        Write-Host "      VLC en cache, réutilisation." -ForegroundColor DarkGray
+    function Test-VlcArchive($path) {
+        if (-not (Test-Path $path)) { return $false }
+        return ((Get-Item $path).Length -ge 20MB)   # un vrai VLC pèse ~38 Mo
     }
 
-    # Extraire VLC dans le bundle
-    if ($VlcZip -and (Test-Path $VlcZip)) {
-        New-Item -ItemType Directory -Path $VlcDir -Force | Out-Null
-        Write-Host "      Extraction VLC..." -ForegroundColor Yellow
-        if ($Has7z) {
-            & $SevenZip x $VlcZip "-o$VlcDir" -y | Out-Null
-        } else {
-            Expand-Archive -Path $VlcZip -DestinationPath $VlcDir -Force
+    if (-not (Test-VlcArchive $VlcZip)) {
+        $ProgressPreference = 'SilentlyContinue'
+        foreach ($url in $VlcUrls) {
+            Write-Host "      Téléchargement VLC : $url" -ForegroundColor Yellow
+            try {
+                Invoke-WebRequest -Uri $url -OutFile $VlcZip -UseBasicParsing -MaximumRedirection 6
+            } catch {
+                Write-Host "      Échec ce miroir : $($_.Exception.Message)" -ForegroundColor DarkYellow
+            }
+            if (Test-VlcArchive $VlcZip) {
+                Write-Host "      VLC téléchargé et validé (~$([math]::Round((Get-Item $VlcZip).Length/1MB)) Mo)." -ForegroundColor Green
+                break
+            }
+            Write-Host "      Fichier reçu invalide, miroir suivant..." -ForegroundColor DarkYellow
+            Remove-Item $VlcZip -ErrorAction SilentlyContinue
         }
-        # Remonter d'un niveau si VLC extrait dans un sous-dossier
-        $VlcSub = Get-ChildItem $VlcDir -Directory | Select-Object -First 1
-        if ($VlcSub -and (Test-Path "$($VlcSub.FullName)\vlc.exe")) {
-            Get-ChildItem "$($VlcSub.FullName)\*" | Move-Item -Destination $VlcDir -Force
-            Remove-Item $VlcSub.FullName -Recurse -Force
-        }
-        Write-Host "      VLC intégré dans le bundle." -ForegroundColor Green
+    } else {
+        Write-Host "      VLC en cache valide, réutilisation." -ForegroundColor DarkGray
     }
+
+    if (-not (Test-VlcArchive $VlcZip)) {
+        Write-Host "ERREUR : aucun miroir n'a fourni un VLC valide." -ForegroundColor Red
+        exit 1
+    }
+
+    # Extraction dans le bundle
+    New-Item -ItemType Directory -Path $VlcDir -Force | Out-Null
+    Write-Host "      Extraction VLC..." -ForegroundColor Yellow
+    if ($Has7z) {
+        & $SevenZip x $VlcZip "-o$VlcDir" -y | Out-Null
+        if ($LASTEXITCODE -ne 0) { Write-Host "ERREUR : extraction 7z échouée." -ForegroundColor Red; exit 1 }
+    } else {
+        Expand-Archive -Path $VlcZip -DestinationPath $VlcDir -Force
+    }
+    # VLC s'extrait dans un sous-dossier vlc-3.0.21\ → on remonte d'un niveau
+    $VlcSub = Get-ChildItem $VlcDir -Directory | Select-Object -First 1
+    if ($VlcSub -and (Test-Path "$($VlcSub.FullName)\vlc.exe")) {
+        Get-ChildItem "$($VlcSub.FullName)\*" | Move-Item -Destination $VlcDir -Force
+        Remove-Item $VlcSub.FullName -Recurse -Force
+    }
+    if (-not (Test-Path "$VlcDir\vlc.exe")) {
+        Write-Host "ERREUR : vlc.exe introuvable après extraction." -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "      VLC intégré : $VlcDir\vlc.exe" -ForegroundColor Green
 } else {
     Write-Host "[3/4] VLC : ignoré (-SkipVlc)." -ForegroundColor DarkGray
 }
