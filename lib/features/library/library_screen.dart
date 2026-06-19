@@ -7,14 +7,6 @@ import '../../shared/widgets/media_card.dart';
 
 const _kPageSize = 100;
 
-// Filtre type manuel — indépendant du collectionType serveur
-const _typeFilters = [
-  (label: 'Tous', value: 'all'),
-  (label: 'Films', value: 'Movie'),
-  (label: 'Séries', value: 'Series'),
-  (label: 'Saisons', value: 'Season'),
-];
-
 class _LibraryArgs {
   final String libraryId;
   final String sortBy;
@@ -43,13 +35,15 @@ class _LibraryArgs {
   int get hashCode => Object.hash(libraryId, sortBy, sortOrder, startIndex, genre);
 }
 
-final _genresProvider = FutureProvider.family<List<String>, String>((ref, libraryId) async {
+final _genresProvider =
+    FutureProvider.autoDispose.family<List<String>, String>((ref, libraryId) async {
   final server = ref.watch(activeServerProvider);
   if (server == null) return [];
   return ref.read(jellyfinClientProvider).getGenres(server.userId, libraryId);
 });
 
-final _libraryItemsProvider = FutureProvider.family<ItemsResponse, _LibraryArgs>(
+final _libraryItemsProvider =
+    FutureProvider.autoDispose.family<ItemsResponse, _LibraryArgs>(
   (ref, args) async {
     final server = ref.watch(activeServerProvider);
     if (server == null) return const ItemsResponse(items: [], totalRecordCount: 0);
@@ -88,10 +82,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   String _sortBy = 'SortName';
   bool _ascending = true;
   int _page = 0;
-  String _typeFilter = 'all';
   String? _genre;
 
   final List<JellyItem> _allItems = [];
+  // startIndex des pages déjà intégrées à _allItems → évite les doublons et
+  // les boucles de fusion (la population se fait dans build, pas via ref.listen).
+  final Set<int> _mergedStarts = {};
   int _totalCount = 0;
   bool _isLoadingMore = false;
   late final ScrollController _scrollController;
@@ -102,14 +98,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   void initState() {
     super.initState();
     _scrollController = ScrollController()..addListener(_onScroll);
-    _typeFilter = switch (widget.collectionType) {
-      'movies' => 'Movie',
-      'tvshows' => 'Series',
-      'boxsets' => 'BoxSet',
-      _ => 'all',
-    };
-    debugPrint('[Library] init id=${widget.libraryId} '
-        'collectionType=${widget.collectionType} → filter=$_typeFilter');
   }
 
   @override
@@ -134,6 +122,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     setState(() {
       _page = 0;
       _allItems.clear();
+      _mergedStarts.clear();
       _totalCount = 0;
       _isLoadingMore = false;
     });
@@ -194,14 +183,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       );
 
   List<JellyItem> _applyFilter(List<JellyItem> items) {
-    if (_typeFilter == 'all') {
-      // Même en mode "Tous" on retire les Episodes orphelins :
-      // dans une vue Library (parentId), un Episode signifie un fichier
-      // mal classé côté serveur (film indexé comme Episode). On les masque
-      // par défaut pour éviter les faux "films d'autres bibliothèques".
-      return items.where((i) => i.type != 'Episode').toList();
-    }
-    return items.where((i) => i.type == _typeFilter).toList();
+    // Dans une vue Library (parentId), un Episode signifie un fichier mal
+    // classé côté serveur (film indexé comme Episode). On les masque pour
+    // éviter les faux "films d'autres bibliothèques".
+    return items.where((i) => i.type != 'Episode').toList();
   }
 
   @override
@@ -216,13 +201,19 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final genres = ref.watch(_genresProvider(widget.libraryId));
     final result = ref.watch(_libraryItemsProvider(args));
 
-    // Accumulation des pages pour le scroll infini
-    ref.listen(_libraryItemsProvider(args), (_, next) {
-      next.whenData((data) {
+    // Population fiable : on intègre la donnée OBSERVÉE (pas un "changement").
+    // Indispensable car au retour sur l'écran le provider est déjà résolu
+    // (aucun ref.listen ne se déclencherait → bibliothèque vide).
+    // Idempotent grâce à _mergedStarts : pas de boucle ni de doublon.
+    result.whenData((data) {
+      if (_mergedStarts.contains(args.startIndex)) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _mergedStarts.contains(args.startIndex)) return;
         setState(() {
+          _mergedStarts.add(args.startIndex);
           _totalCount = data.totalRecordCount;
           final newItems = _applyFilter(data.items);
-          if (_page == 0) {
+          if (args.startIndex == 0) {
             _allItems
               ..clear()
               ..addAll(newItems);
@@ -254,7 +245,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           onPressed: () => context.canPop() ? context.pop() : context.go('/home'),
         ),
         bottom: PreferredSize(
-          preferredSize: Size.fromHeight(genres.maybeWhen(data: (g) => g.isNotEmpty ? 132.0 : 88.0, orElse: () => 88.0)),
+          preferredSize: Size.fromHeight(genres.maybeWhen(data: (g) => g.isNotEmpty ? 96.0 : 50.0, orElse: () => 50.0)),
           child: Column(
             children: [
               // ── Barre tri ────────────────────────────────────────────
@@ -311,31 +302,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                       ),
                     ),
                   ],
-                ),
-              ),
-              // ── Chips type ───────────────────────────────────────────
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
-                child: Row(
-                  children: _typeFilters.map((f) {
-                    final selected = _typeFilter == f.value;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(f.label),
-                        selected: selected,
-                        selectedColor: Theme.of(context).colorScheme.primary,
-                        backgroundColor: const Color(0xFF1A1A1A),
-                        labelStyle: TextStyle(
-                          color: selected ? Colors.white : const Color(0xFFAAAAAA),
-                          fontSize: 12,
-                        ),
-                        side: BorderSide.none,
-                        onSelected: (_) { _typeFilter = f.value; _resetAndReload(); },
-                      ),
-                    );
-                  }).toList(),
                 ),
               ),
               // ── Chips genres ──────────────────────────────────────────

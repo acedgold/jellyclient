@@ -90,13 +90,14 @@ class JellyfinClient {
       },
     );
     final data = resp.data as Map<String, dynamic>;
-    final items = (data['Items'] as List<dynamic>)
+    final rawItems = (data['Items'] as List<dynamic>?) ?? const [];
+    final items = rawItems
         .map((e) => JellyItem.fromJson(e as Map<String, dynamic>))
         .toList();
     return ItemsResponse(
       items: items,
-      totalRecordCount: data['TotalRecordCount'] as int,
-      startIndex: data['StartIndex'] as int?,
+      totalRecordCount: (data['TotalRecordCount'] as num?)?.toInt() ?? items.length,
+      startIndex: (data['StartIndex'] as num?)?.toInt(),
     );
   }
 
