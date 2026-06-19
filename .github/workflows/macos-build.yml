@@ -1,0 +1,65 @@
+name: Build macOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Tag de la release où attacher le zip"
+        required: true
+        default: "v1.0.0"
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Flutter 3.41.9
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.9"
+          channel: stable
+          cache: true
+
+      - name: Dépendances Dart/Flutter
+        run: flutter pub get
+
+      - name: Générer le code (build_runner)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Build macOS (release, signature ad-hoc)
+        run: flutter build macos --release
+
+      - name: Packager le .app en zip
+        run: |
+          APP=$(find build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -1)
+          echo "App trouvée : $APP"
+          mkdir -p dist
+          ditto -c -k --keepParent "$APP" dist/JellyClient-macOS.zip
+
+      - name: Déterminer le tag de release
+        id: tag
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.event.inputs.release_tag }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Attacher le zip à la release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ steps.tag.outputs.tag }} dist/JellyClient-macOS.zip --clobber
+
+      - name: Sauvegarder aussi comme artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: JellyClient-macOS
+          path: dist/JellyClient-macOS.zip
