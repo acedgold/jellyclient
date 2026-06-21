@@ -93,6 +93,15 @@ String? _audioLabelFromStreams(List<MediaStream> streams) {
   return null;
 }
 
+/// Durée d'un film formatée (« 1h52 » ou « 48min ») depuis les RunTimeTicks.
+String? _movieDuration(int? ticks) {
+  if (ticks == null || ticks <= 0) return null;
+  final m = ticks ~/ 600000000; // 1 min = 600 000 000 ticks
+  if (m <= 0) return null;
+  final h = m ~/ 60, min = m % 60;
+  return h > 0 ? '${h}h${min.toString().padLeft(2, '0')}' : '${min}min';
+}
+
 /// Route vers la bonne vue selon le type Jellyfin de l'item.
 void navigateToItem(BuildContext context, JellyItem item) {
   switch (item.type) {
@@ -219,6 +228,10 @@ class _MediaCardState extends ConsumerState<MediaCard> {
         ? (seriesStreamsAsync?.valueOrNull ?? directStreams)
         : directStreams;
     final audioLabel = _audioLabelFromStreams(audioStreams);
+    // Durée du film (badge haut-gauche, films uniquement)
+    final durationLabel = widget.item.type == 'Movie'
+        ? _movieDuration(widget.item.runTimeTicks)
+        : null;
 
     // select() : rebuild uniquement si le statut de CET item change (pas toute la liste)
     final inWatchlist = ref.watch(
@@ -305,7 +318,7 @@ class _MediaCardState extends ConsumerState<MediaCard> {
                     widget.item.name,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 14,
+                      fontSize: 16,
                       fontWeight: FontWeight.w700,
                       shadows: [Shadow(blurRadius: 6, color: Colors.black)],
                     ),
@@ -313,11 +326,13 @@ class _MediaCardState extends ConsumerState<MediaCard> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                // Badge audio (haut-droit, prioritaire)
+                // Badge audio/langue : films → haut-droit ; séries → haut-gauche
+                // sous le badge SÉRIE (permuté avec le compteur d'épisodes).
                 if (audioLabel != null)
                   Positioned(
-                    top: 6,
-                    right: 6,
+                    top: isSeries ? 27 : 6,
+                    left: isSeries ? 6 : null,
+                    right: isSeries ? null : 6,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                       decoration: BoxDecoration(
@@ -335,10 +350,10 @@ class _MediaCardState extends ConsumerState<MediaCard> {
                       ),
                     ),
                   ),
-                // Badge vu (sous le badge audio si présent)
+                // Badge vu (sous le badge audio à droite, films seulement)
                 if (widget.item.userData?.played == true)
                   Positioned(
-                    top: audioLabel != null ? 28 : 6,
+                    top: (!isSeries && audioLabel != null) ? 28 : 6,
                     right: 6,
                     child: Container(
                       padding: const EdgeInsets.all(3),
@@ -385,6 +400,55 @@ class _MediaCardState extends ConsumerState<MediaCard> {
                               fontWeight: FontWeight.w700)),
                     ),
                   ),
+                // Durée du film (haut-gauche, sous NOUVEAU si présent)
+                if (durationLabel != null)
+                  Positioned(
+                    top: _isNew(widget.item) ? 27 : 6,
+                    left: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.schedule,
+                              color: Colors.white70, size: 10),
+                          const SizedBox(width: 3),
+                          Text(durationLabel,
+                              style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                    ),
+                  ),
+                // Nombre d'épisodes non vus (haut-droit, permuté avec la langue)
+                if (widget.item.type == 'Series' &&
+                    (widget.item.userData?.unplayedItemCount ?? 0) > 0)
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE50914),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${widget.item.userData!.unplayedItemCount}',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
 
                 // ─── Hover overlay ─────────────────────────────────────────
                 RepaintBoundary(
@@ -412,7 +476,7 @@ class _MediaCardState extends ConsumerState<MediaCard> {
                                         '★ ${widget.item.communityRating!.toStringAsFixed(1)}',
                                         style: const TextStyle(
                                             color: Color(0xFFFFB800),
-                                            fontSize: 11,
+                                            fontSize: 13,
                                             fontWeight: FontWeight.w600),
                                       ),
                                     if (widget.item.communityRating != null &&
@@ -423,7 +487,7 @@ class _MediaCardState extends ConsumerState<MediaCard> {
                                         '${widget.item.productionYear}',
                                         style: const TextStyle(
                                             color: Color(0xFFAAAAAA),
-                                            fontSize: 11),
+                                            fontSize: 13),
                                       ),
                                     if (_formatRemaining() != null) ...[
                                       const Spacer(),
@@ -431,7 +495,7 @@ class _MediaCardState extends ConsumerState<MediaCard> {
                                         '${_formatRemaining()} restant',
                                         style: const TextStyle(
                                             color: Color(0xFFE50914),
-                                            fontSize: 10,
+                                            fontSize: 12,
                                             fontWeight: FontWeight.w600),
                                       ),
                                     ],
@@ -444,7 +508,7 @@ class _MediaCardState extends ConsumerState<MediaCard> {
                                     widget.item.overview!,
                                     style: const TextStyle(
                                         color: Color(0xFFCCCCCC),
-                                        fontSize: 12,
+                                        fontSize: 14,
                                         height: 1.4),
                                     maxLines: 4,
                                     overflow: TextOverflow.ellipsis,

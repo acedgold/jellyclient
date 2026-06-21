@@ -927,7 +927,10 @@ class _HorizontalSectionState extends ConsumerState<_HorizontalSection> {
             children: [
               Expanded(
                 child: Text(widget.title,
-                    style: Theme.of(context).textTheme.titleLarge),
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontSize: 25)),
               ),
               _ScrollArrow(
                 left: true,
@@ -1007,7 +1010,11 @@ class _SectionSkeleton extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
-          child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+          child: Text(title,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontSize: 25)),
         ),
         SizedBox(
           height: 207,

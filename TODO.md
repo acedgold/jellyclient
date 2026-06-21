@@ -14,6 +14,12 @@
 - [x] v1.0.5 vignettes biblio alignées accueil · v1.0.6 hero fiche + badges
 - [x] Cible macOS (lecteur VLC, entitlements)
 
+## Fait (v1.0.8)
+- [x] Accueil : vignettes +10 %, polices (nom/synopsis/note) et titres de section agrandis
+- [x] Vignettes séries : badge nombre d'épisodes non vus (haut-droit), langue à gauche
+- [x] Vignettes films : badge durée (haut-gauche)
+- [x] Refonte esthétique des écrans Paramètres et Mes listes (cartes, en-têtes)
+
 ## Fait (v1.0.7)
 - [x] Lecture : sélection audio/sous-titres par **index** (VLC ignore
       `--audio-language` sur flux réseau) + sous-titres **non forcés** préférés

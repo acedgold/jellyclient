@@ -28,8 +28,12 @@ class WatchlistScreen extends ConsumerWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
+        backgroundColor: const Color(0xFF0D0D0D),
         appBar: AppBar(
-          title: const Text('Mes listes'),
+          backgroundColor: const Color(0xFF0D0D0D),
+          elevation: 0,
+          title: const Text('Mes listes',
+              style: TextStyle(fontWeight: FontWeight.w700)),
           leading: BackButton(
             onPressed: () => context.canPop() ? context.pop() : context.go('/home'),
           ),
@@ -134,11 +138,32 @@ class _ItemList extends ConsumerWidget {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
-          child: Text(
-            emptyMsg,
-            textAlign: TextAlign.center,
-            style:
-                const TextStyle(color: Color(0xFF666666), fontSize: 14, height: 1.6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 76,
+                height: 76,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF1A1A1A),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isWatchlist
+                      ? Icons.bookmark_border_rounded
+                      : Icons.check_circle_outline_rounded,
+                  color: const Color(0xFF555555),
+                  size: 36,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                emptyMsg,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: Color(0xFF777777), fontSize: 14, height: 1.6),
+              ),
+            ],
           ),
         ),
       );
@@ -219,16 +244,20 @@ class _WatchlistTile extends ConsumerWidget {
         padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
           color: Colors.red[900],
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(14),
         ),
         child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
       ),
       onDismissed: (_) => _removeItem(ref, item, isWatchlist),
       child: Material(
-        color: const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(8),
+        color: const Color(0xFF161616),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: Color(0xFF242424)),
+        ),
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(14),
           onTap: () {
             if (item.type == 'Series') {
               context.go('/series/${item.id}');
@@ -348,8 +377,12 @@ class _WatchlistGridCard extends ConsumerWidget {
         }
       },
       onLongPress: () => _removeItem(ref, item, isWatchlist),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFF242424)),
+        ),
+        clipBehavior: Clip.antiAlias,
         child: Stack(
           fit: StackFit.expand,
           children: [
