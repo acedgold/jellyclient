@@ -619,8 +619,7 @@ class _SeasonTrackSheetState extends State<_SeasonTrackSheet> {
         if (idx >= 0) _audioPos = idx;
       }
       if (subLang != null) {
-        final idx = widget.subStreams.indexWhere(
-            (s) => matchesLang(s.language, subLang));
+        final idx = bestSubtitleIndex(widget.subStreams, subLang);
         _subPos = idx >= 0 ? idx : -1;
       }
     });
@@ -1018,11 +1017,31 @@ class _EpisodeCard extends ConsumerWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (episode.runTimeTicks != null) ...[
+                  if (episode.communityRating != null ||
+                      episode.runTimeTicks != null) ...[
                     const SizedBox(height: 3),
-                    Text(
-                      _duration(episode.runTimeTicks),
-                      style: const TextStyle(color: Color(0xFF666666), fontSize: 12),
+                    Row(
+                      children: [
+                        if (episode.communityRating != null) ...[
+                          Text(
+                            '★ ${episode.communityRating!.toStringAsFixed(1)}',
+                            style: const TextStyle(
+                                color: Color(0xFFFFB800),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600),
+                          ),
+                          if (episode.runTimeTicks != null)
+                            const Text('  ·  ',
+                                style: TextStyle(
+                                    color: Color(0xFF555555), fontSize: 12)),
+                        ],
+                        if (episode.runTimeTicks != null)
+                          Text(
+                            _duration(episode.runTimeTicks),
+                            style: const TextStyle(
+                                color: Color(0xFF666666), fontSize: 12),
+                          ),
+                      ],
                     ),
                   ],
                   if (episode.overview != null) ...[
@@ -1206,8 +1225,7 @@ class _EpisodePlaySheetState extends ConsumerState<_EpisodePlaySheet> {
         if (idx >= 0) _audioPos = idx;
       }
       if (subLang != null) {
-        final idx = _subStreams.indexWhere(
-            (s) => matchesLang(s.language, subLang));
+        final idx = bestSubtitleIndex(_subStreams, subLang);
         _subPos = idx >= 0 ? idx : -1;
       }
     });
@@ -1466,87 +1484,6 @@ class _NextEpisodeButtonLarge extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(6)),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-// ─── Prochain épisode — bandeau compact ───────────────────────────────────────
-
-class _NextEpisodeButton extends ConsumerWidget {
-  final String seriesId;
-  const _NextEpisodeButton({required this.seriesId});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final next = ref.watch(_nextEpisodeProvider(seriesId));
-    return next.when(
-      loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
-      data: (ep) {
-        if (ep == null) return const SizedBox.shrink();
-        final s = ep.parentIndexNumber?.toString().padLeft(2, '0') ?? '?';
-        final e = ep.indexNumber?.toString().padLeft(2, '0') ?? '?';
-        final server = ref.read(activeServerProvider);
-        final client = ref.read(jellyfinClientProvider);
-        return Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: GestureDetector(
-            onTap: () async {
-              if (server == null) return;
-              final capturedClient = client;
-              final capturedServer = server;
-              final capturedEpId = ep.id;
-              final capturedRuntime = ep.runTimeTicks;
-              final audioLang = await getPreferredAudioLang(server.userId);
-              final subLang = await getPreferredSubLang(server.userId);
-              final url = client.getStreamUrl(itemId: ep.id, userId: server.userId);
-              await launchWithExternalPlayer(
-                url: url,
-                title: '${ep.seriesName ?? ''} — ${ep.name}',
-                startTicks: ep.userData?.playbackPositionTicks ?? 0,
-                audioLang: audioLang,
-                subLang: subLang,
-                onStopped: (estimatedTicks) async {
-                  await capturedClient.reportPlaybackStop(
-                    itemId: capturedEpId,
-                    positionTicks: estimatedTicks,
-                  );
-                  if (capturedRuntime != null &&
-                      estimatedTicks >= capturedRuntime * 0.9) {
-                    await capturedClient.markPlayed(
-                        capturedServer.userId, capturedEpId);
-                  }
-                },
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE50914).withOpacity(0.15),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: const Color(0xFFE50914).withOpacity(0.5)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.play_circle_outline_rounded,
-                      color: Color(0xFFE50914), size: 16),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      'S${s}E$e — ${ep.name}',
-                      style: const TextStyle(
-                          color: Color(0xFFE50914), fontSize: 12, fontWeight: FontWeight.w600),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
             ),
           ),
         );

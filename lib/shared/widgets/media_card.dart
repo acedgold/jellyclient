@@ -177,6 +177,7 @@ class _MediaCardState extends ConsumerState<MediaCard> {
         startTicks: widget.item.userData?.playbackPositionTicks ?? 0,
         audioLang: audioLang,
         subLang: subLang,
+        mediaStreams: widget.item.mediaStreams,
         onStopped: (estimatedTicks) async {
           await capturedClient.reportPlaybackStop(
             itemId: capturedItemId,

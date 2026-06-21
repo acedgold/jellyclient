@@ -235,7 +235,7 @@ class JellyfinClient {
         'IncludeItemTypes': 'Episode',
         'SortBy': 'IndexNumber',
         'SortOrder': 'Ascending',
-        'Fields': 'Overview,UserData,MediaStreams',
+        'Fields': 'Overview,UserData,MediaStreams,CommunityRating',
         'Recursive': false,
       },
     );
@@ -440,6 +440,19 @@ class JellyfinClient {
       final data = resp.data as Map<String, dynamic>;
       final policy = data['Policy'] as Map<String, dynamic>?;
       return policy?['IsAdministrator'] as bool? ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Vrai si le token courant est encore accepté par le serveur (GET /Users/Me).
+  /// Sert à valider une session « 24 h » avant d'entrer (évite un /home vide
+  /// quand le token a été révoqué côté serveur).
+  Future<bool> validateToken() async {
+    try {
+      final resp = await _dio.get('$_baseUrl/Users/Me',
+          options: Options(receiveTimeout: const Duration(seconds: 6)));
+      return resp.statusCode == 200;
     } catch (_) {
       return false;
     }

@@ -101,7 +101,7 @@ class ActorRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 168,
+      height: 196,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: actors.length,
@@ -118,16 +118,16 @@ class ActorRow extends StatelessWidget {
                     extra: {'name': actor.name, 'role': actor.role})
                 : null,
             child: SizedBox(
-              width: 94,
+              width: 124,
               child: Column(
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(46),
+                    borderRadius: BorderRadius.circular(58),
                     child: photoUrl != null
                         ? CachedNetworkImage(
                             imageUrl: photoUrl,
-                            width: 88,
-                            height: 88,
+                            width: 116,
+                            height: 116,
                             fit: BoxFit.cover,
                             errorWidget: (_, __, ___) => _placeholder(),
                           )
@@ -160,9 +160,9 @@ class ActorRow extends StatelessWidget {
   }
 
   Widget _placeholder() => Container(
-        width: 88,
-        height: 88,
+        width: 116,
+        height: 116,
         color: const Color(0xFF2A2A2A),
-        child: const Icon(Icons.person_outline, color: Color(0xFF555555), size: 40),
+        child: const Icon(Icons.person_outline, color: Color(0xFF555555), size: 53),
       );
 }

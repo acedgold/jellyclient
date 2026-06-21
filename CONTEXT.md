@@ -42,12 +42,32 @@ done
 gtk-update-icon-cache -f -t ~/.local/share/icons/hicolor/
 ```
 
-## État actuel (2026-06-19) — v1.0.4
+## État actuel (2026-06-19) — v1.0.6 (v1.0.7 en préparation)
 
-Version dans `pubspec.yaml` : `1.0.4+5`. Affichée dans la barre de titre de la
+Version dans `pubspec.yaml` (`1.0.6+7`). Affichée dans la barre de titre de la
 fenêtre (`JellyClient v1.0.x`, en dur dans `linux/runner/my_application.cc` +
 `windows/runner/main.cpp` — à bumper à chaque version) et sous le titre de
 l'écran de connexion (dynamique via `package_info_plus`).
+
+### Lecture externe — sélection audio/sous-titres par INDEX (v1.0.7)
+- **VLC/mpv ignorent souvent `--audio-language`/`--sub-language` sur un flux
+  réseau.** La lecture rapide résout donc la langue préférée en **index de
+  piste** (via les `MediaStreams` du média) et passe `--audio-track`/`--sub-track`
+  (index **0-based par type**), comme le font déjà les sheets.
+- **Sous-titres : on privilégie le COMPLET (non forcé)** via `bestSubtitleIndex`
+  (helper dans `external_player.dart`) — repli sur le forcé seulement s'il n'y a
+  pas de version complète. Utilisé en lecture rapide ET dans les sheets.
+- `launchWithExternalPlayer` prend un param `mediaStreams` pour cette résolution.
+
+### Qualité — 0 warning
+- `analysis_options.yaml` : `analyzer.errors.invalid_annotation_target: ignore`
+  (faux positif freezed + json_serializable sur `@JsonKey`).
+- Code mort supprimé (widgets/méthodes/imports inutilisés).
+
+### Versions intermédiaires
+- v1.0.5 : vignettes bibliothèque alignées sur la taille des cartes de l'accueil.
+- v1.0.6 : en-tête hero fiche, badges harmonisés, badge audio fiable.
+- macOS : cible ajoutée (lecteur VLC, entitlements) — voir commits récents.
 
 ### Authentification — page de login dédiée (v1.0.3/1.0.4)
 - Flux 2 pages style Jellyfin : **« Ajouter un serveur » = URL seule** →
@@ -115,7 +135,7 @@ l'écran de connexion (dynamique via `package_info_plus`).
 - Clés : `pref_audio_lang_<userId>`, `pref_sub_lang_<userId>`
 - Paramètres → chips + bouton **Enregistrer** (obligatoire) + confirmation
 - Auto-sélection dans `_FilmPlaySheet`, `_SeasonTrackSheet`, `_EpisodePlaySheet`
-- Lecture rapide : `--audio-language` + `--sub-language` passés à VLC/mpv
+- Lecture rapide : ⚠️ historique — depuis v1.0.7 on passe `--audio-track`/`--sub-track` par index (voir section v1.0.7), VLC ignorant souvent `--audio-language`
 - `_cleanLegacyPrefs()` au démarrage → supprime anciennes clés sans userId
 - `setActiveServer()` après chaque switch → userId stable au redémarrage
 
@@ -139,6 +159,7 @@ l'écran de connexion (dynamique via `package_info_plus`).
 3. **build_runner** obligatoire après modif `jellyfin_models.dart`
 4. **Indices VLC** : 0-based par type ; mpv : 1-based par type
 5. **VLC `--no-subs` INVALIDE** → `--sub-track=-1`
+5b. **VLC ignore `--audio-language`/`--sub-language` sur flux réseau** → résoudre la langue préférée en **index de piste** (0-based par type) et passer `--audio-track`/`--sub-track`. Sous-titres : préférer le **non forcé** (`bestSubtitleIndex`).
 6. **DeviceId** : UUID au 1er lancement, clé `jelly_device_id`
 7. **Préférences langue** : clé `pref_audio_lang_<userId>` (userId = Jellyfin UUID)
 8. **Bouton Enregistrer obligatoire** : chips ne sauvegardent pas automatiquement

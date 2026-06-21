@@ -128,13 +128,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     });
   }
 
-  static String _sortLabel(String sortBy) => switch (sortBy) {
-    'DateCreated'     => 'Date',
-    'CommunityRating' => 'Note',
-    'ProductionYear'  => 'Année',
-    _                 => 'A–Z',
-  };
-
   Widget _sortBtn(String value, String label) {
     final active = _sortBy == value;
     return Padding(
@@ -159,28 +152,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       ),
     );
   }
-
-  PopupMenuItem<String> _sortItem(String value, IconData icon, String label) =>
-      PopupMenuItem(
-        value: value,
-        child: Row(children: [
-          Icon(icon, size: 18, color: _sortBy == value
-              ? Theme.of(context).colorScheme.primary : null),
-          const SizedBox(width: 10),
-          Text(label, style: TextStyle(
-            color: _sortBy == value ? Theme.of(context).colorScheme.primary : null,
-            fontWeight: _sortBy == value ? FontWeight.w600 : FontWeight.normal,
-          )),
-          if (_sortBy == value) ...[
-            const Spacer(),
-            Icon(
-              _ascending ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
-              size: 14,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          ],
-        ]),
-      );
 
   List<JellyItem> _applyFilter(List<JellyItem> items) {
     // Dans une vue Library (parentId), un Episode signifie un fichier mal
@@ -369,54 +340,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               isLoadingMore: _isLoadingMore,
               hasMore: _allItems.length < rawTotal,
             ),
-    );
-  }
-}
-
-class _Pagination extends StatelessWidget {
-  final int currentPage;
-  final int totalPages;
-  final int total;
-  final VoidCallback? onPrev;
-  final VoidCallback? onNext;
-
-  const _Pagination({
-    required this.currentPage,
-    required this.totalPages,
-    required this.total,
-    this.onPrev,
-    this.onNext,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final from = currentPage * _kPageSize + 1;
-    final to = ((currentPage + 1) * _kPageSize).clamp(0, total);
-
-    return Container(
-      color: const Color(0xFF0D0D0D),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.chevron_left_rounded, size: 28),
-            onPressed: onPrev,
-            color: onPrev != null ? Colors.white : const Color(0xFF444444),
-          ),
-          Expanded(
-            child: Text(
-              '$from–$to sur $total',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFF888888), fontSize: 13),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.chevron_right_rounded, size: 28),
-            onPressed: onNext,
-            color: onNext != null ? Colors.white : const Color(0xFF444444),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -172,80 +172,87 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 alpha,
               ),
               elevation: 0,
-              leading: IconButton(
-                icon: const Icon(Icons.home_filled,
-                    color: Color(0xFFE50914), size: 26),
-                tooltip: 'Haut de page',
-                onPressed: () => _scrollController.animateTo(0,
-                    duration: const Duration(milliseconds: 400),
-                    curve: Curves.easeOut),
-              ),
+              automaticallyImplyLeading: false,
+              titleSpacing: 6,
               title: Opacity(
-                opacity: alpha,
-                child: Text(serverName),
-              ),
-              actions: [
-                Opacity(
-                  // Opacité min 0.85 — icônes toujours bien visibles
-                  opacity: (0.85 + alpha * 0.15).clamp(0.0, 1.0),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Badge live : sessions actives — ADMIN UNIQUEMENT
-                      if (isAdmin)
-                        _LiveBadgeButton(
-                          count: sessionCount,
-                          onTap: () {
-                            ref.invalidate(_activeSessionsProvider);
-                            showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (_) => ProviderScope(
-                                parent: ProviderScope.containerOf(context),
-                                child: const _LiveSessionsSheet(),
-                              ),
-                            );
+                // Opacité min 0.85 — icônes toujours bien visibles
+                opacity: (0.85 + alpha * 0.15).clamp(0.0, 1.0),
+                child: Row(
+                  children: [
+                    // ── GAUCHE : navigation (maison + recherche + mes listes) ──
+                    IconButton(
+                      icon: const Icon(Icons.home_filled,
+                          color: Color(0xFFE50914), size: 26),
+                      tooltip: 'Accueil — $serverName',
+                      onPressed: () => _scrollController.animateTo(0,
+                          duration: const Duration(milliseconds: 400),
+                          curve: Curves.easeOut),
+                    ),
+                    IconButton(
+                        icon: const Icon(Icons.search),
+                        tooltip: 'Rechercher',
+                        onPressed: () => context.go('/search')),
+                    IconButton(
+                        icon: const Icon(Icons.bookmark_rounded),
+                        tooltip: 'Mes listes',
+                        onPressed: () => context.go('/watchlist')),
+
+                    // ── CENTRE : taille des vignettes ──
+                    Expanded(
+                      child: Center(
+                        child: _CardSizeButtons(
+                          current: cardSize,
+                          onSelect: (i) async {
+                            ref.read(cardSizeProvider.notifier).state = i;
+                            await ref
+                                .read(serverStorageProvider)
+                                .setCardSize(i);
                           },
                         ),
-                      // 3 boutons taille vignettes
-                      _CardSizeButtons(
-                        current: cardSize,
-                        onSelect: (i) async {
-                          ref.read(cardSizeProvider.notifier).state = i;
-                          await ref.read(serverStorageProvider).setCardSize(i);
+                      ),
+                    ),
+
+                    // ── DROITE : compte / serveur (inchangés) ──
+                    // Badge live : sessions actives — ADMIN UNIQUEMENT
+                    if (isAdmin)
+                      _LiveBadgeButton(
+                        count: sessionCount,
+                        onTap: () {
+                          ref.invalidate(_activeSessionsProvider);
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (_) => ProviderScope(
+                              parent: ProviderScope.containerOf(context),
+                              child: const _LiveSessionsSheet(),
+                            ),
+                          );
                         },
                       ),
-                      IconButton(
-                          icon: const Icon(Icons.search),
-                          onPressed: () => context.go('/search')),
-                      IconButton(
-                          icon: const Icon(Icons.bookmark_rounded),
-                          onPressed: () => context.go('/watchlist')),
-                      // Sélection serveur
-                      IconButton(
-                          icon: const Icon(Icons.dns_outlined),
-                          tooltip: 'Serveurs',
-                          onPressed: () => context.go('/servers')),
-                      IconButton(
-                          icon: const Icon(Icons.switch_account_outlined),
-                          tooltip: 'Changer d\'utilisateur',
-                          onPressed: () async {
-                            final active = ref.read(activeServerProvider);
-                            if (active != null) {
-                              await ref
-                                  .read(serverStorageProvider)
-                                  .clearLogin(active.id);
-                            }
-                            if (context.mounted) context.go('/login');
-                          }),
-                      IconButton(
-                          icon: const Icon(Icons.settings_outlined),
-                          onPressed: () => context.go('/settings')),
-                    ],
-                  ),
+                    IconButton(
+                        icon: const Icon(Icons.dns_outlined),
+                        tooltip: 'Serveurs',
+                        onPressed: () => context.go('/servers')),
+                    IconButton(
+                        icon: const Icon(Icons.switch_account_outlined),
+                        tooltip: 'Changer d\'utilisateur',
+                        onPressed: () async {
+                          final active = ref.read(activeServerProvider);
+                          if (active != null) {
+                            await ref
+                                .read(serverStorageProvider)
+                                .clearLogin(active.id);
+                          }
+                          if (context.mounted) context.go('/login');
+                        }),
+                    IconButton(
+                        icon: const Icon(Icons.settings_outlined),
+                        tooltip: 'Paramètres',
+                        onPressed: () => context.go('/settings')),
+                  ],
                 ),
-              ],
+              ),
             );
           },
         ),
@@ -530,6 +537,7 @@ class _HeroBannerContent extends ConsumerWidget {
                                 item.userData?.playbackPositionTicks ?? 0,
                             audioLang: audioLang,
                             subLang: subLang,
+                            mediaStreams: item.mediaStreams,
                           );
                         }
                       },

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../api/models/jellyfin_models.dart';
 
 const _kPlayerPath    = 'jelly_external_player';
 const _kAudioLangPath = 'pref_audio_lang';
@@ -37,6 +38,18 @@ bool matchesLang(String? streamLang, String prefLang) {
   final syns = _langSynonyms[pl];
   if (syns != null) return syns.contains(sl);
   return sl.startsWith(pl.length >= 2 ? pl.substring(0, 2) : pl);
+}
+
+/// Index du meilleur sous-titre dans `subStreams` pour la langue `lang` :
+/// on privilégie le sous-titre **complet** (non forcé) ; on ne retient un
+/// sous-titre **forcé** que s'il n'existe aucune version complète. -1 si aucun.
+int bestSubtitleIndex(List<MediaStream> subStreams, String lang) {
+  var idx = subStreams.indexWhere(
+      (s) => matchesLang(s.language, lang) && s.isForced != true);
+  if (idx < 0) {
+    idx = subStreams.indexWhere((s) => matchesLang(s.language, lang));
+  }
+  return idx;
 }
 
 Future<String> getExternalPlayer() async {
@@ -127,10 +140,32 @@ Future<void> launchWithExternalPlayer({
   int? subtitleTrackPos,
   String? audioLang,    // code ISO 639-2 pour la lecture rapide (ex: 'fre')
   String? subLang,      // code ISO 639-2 pour les sous-titres (null = aucun)
+  List<MediaStream>? mediaStreams, // pistes du média → résolution langue → index
   void Function(int estimatedTicks)? onStopped,
 }) async {
   final player = await getExternalPlayer();
   final startSecs = startTicks ~/ 10000000;
+
+  // VLC/mpv ignorent souvent --audio-language/--sub-language sur un flux réseau.
+  // Si on a les pistes, on résout la langue préférée en INDEX (fiable) et on
+  // passe --audio-track / --sub-track. Les index sont 0-based PAR TYPE.
+  if (mediaStreams != null && mediaStreams.isNotEmpty) {
+    final audioStreams =
+        mediaStreams.where((s) => s.type == 'Audio').toList();
+    final subStreams =
+        mediaStreams.where((s) => s.type == 'Subtitle').toList();
+    if (audioTrackPos == null && audioLang != null) {
+      final idx =
+          audioStreams.indexWhere((s) => matchesLang(s.language, audioLang));
+      if (idx >= 0) audioTrackPos = idx; // sinon : piste audio par défaut
+    }
+    // Ne décider des sous-titres que si on a réellement les pistes (sinon on
+    // laisse le fallback --sub-language plutôt que de forcer "aucun").
+    if (subtitleTrackPos == null && subLang != null && subStreams.isNotEmpty) {
+      final idx = bestSubtitleIndex(subStreams, subLang); // complet > forcé
+      subtitleTrackPos = idx >= 0 ? idx : -1; // pas de correspondance → off
+    }
+  }
 
   final args = _buildArgs(
     player: player,

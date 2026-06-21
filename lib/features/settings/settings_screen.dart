@@ -11,7 +11,6 @@ class SettingsScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final userId = ref.read(activeServerProvider)?.userId ?? '';
     final playerCtrl = useTextEditingController();
     final saved = useState(false);
     final langSaved = useState(false);
